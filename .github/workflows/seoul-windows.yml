@@ -1,0 +1,46 @@
+name: Seoul Windows baseline
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'tauri.conf.json'
+      - '.github/workflows/seoul-windows.yml'
+      - '.github/actions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seoul-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-arnis-linux
+        with:
+          rust-targets: x86_64-pc-windows-msvc
+      - name: Test
+        run: cargo test --locked --target x86_64-pc-windows-msvc
+      - name: Build unsigned executable
+        run: cargo build --locked --release --target x86_64-pc-windows-msvc
+      - name: Prepare artifact and SHA256
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item target/x86_64-pc-windows-msvc/release/arnis.exe dist/arnis-seoul-windows.exe
+          $hash = (Get-FileHash dist/arnis-seoul-windows.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  arnis-seoul-windows.exe" | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arnis-seoul-windows-unsigned
+          path: dist/
+          if-no-files-found: error
