@@ -15640,6 +15640,23 @@ pub fn generate_buildings(
             && (rail_hall_type(building_type)
                 || effective_building_height <= 2 * floor_cycle + GROUND_FLOOR_BONUS),
     };
+    // Seoul: ordinary multi-storey glass shells remain usable without furnishing.
+    // Keep the original geometry of sloped glass skins, which rely on their backing.
+    let config = if !args.interior
+        && config.condition == BuildingCondition::Normal
+        && config.shell_glass == ShellGlass::Backed
+        && config.building_height / config.floor_cycle.max(1) >= 6
+        && !is_sloped_glass_facade(&element.tags)
+    {
+        BuildingConfig {
+            shell_glass: ShellGlass::Plain,
+            recess_windows: false,
+            window_pane: None,
+            ..config
+        }
+    } else {
+        config
+    };
     // Over water a building stands on its plinth down to the bed, a houseboat on its hull;
     // a boathouse keeps the water it shelters.
     if config.is_ground_level && building_type != "boathouse" {
@@ -28434,11 +28451,10 @@ mod facade_integration_tests {
         ("building:levels", "12"),
     ];
 
-    /// A glass tower is a dark, solid skin: wherever its glass is, something
-    /// opaque stands a block or two behind it, never the empty floors, and
-    /// its glass takes the tint of the mapped colour.
+    /// Seoul glass towers keep empty storeys visible through flush glazing,
+    /// without furnishing or an opaque decorative backing.
     #[test]
-    fn a_glass_tower_hides_its_empty_floors() {
+    fn a_glass_tower_exposes_its_empty_floors() {
         let world = glass_world(9101, GLASS_OFFICE, &flat_args());
         for b in world.values() {
             assert!(
@@ -28447,7 +28463,7 @@ mod facade_integration_tests {
                 b.name()
             );
         }
-        let (mut glazed, mut tinted) = (0, 0);
+        let (mut glazed, mut tinted, mut open) = (0, 0, 0);
         for x in 12..=38 {
             for y in 10..=44 {
                 let glass: Vec<Block> = [20, 21]
@@ -28460,12 +28476,11 @@ mod facade_integration_tests {
                 }
                 glazed += 1;
                 tinted += usize::from(glass.contains(&CYAN_STAINED_GLASS));
-                let depth = depth_behind_glass(&world, x, y)
-                    .unwrap_or_else(|| panic!("nothing behind the glass at ({x}, {y})"));
-                assert!(
-                    depth <= 2,
-                    "the glass at ({x}, {y}) shows {depth} blocks in"
-                );
+                if world.get(&(x, y, 20)).is_some_and(|&b| is_glass(b))
+                    && depth_behind_glass(&world, x, y).is_none_or(|depth| depth > 2)
+                {
+                    open += 1;
+                }
             }
         }
         assert!(glazed > 300, "the tower is glazed ({glazed} glass cells)");
@@ -28473,15 +28488,15 @@ mod facade_integration_tests {
             tinted * 5 >= glazed * 4,
             "{tinted} of {glazed} take the mapped tint"
         );
-        // The curtain hangs on mullions standing in the wall plane.
-        let fins = (12..=38)
-            .filter(|&x| {
-                world
-                    .get(&(x, 20, 20))
-                    .is_some_and(|&b| matches!(b, ANDESITE_WALL | POLISHED_DEEPSLATE_WALL))
+        assert!(open > glazed / 2, "{open} of {glazed} glass cells are open");
+        // The usable empty shell still has several floor slabs, not one tall hall.
+        let floors = (10..45)
+            .filter(|&y| {
+                world.get(&(25, y, 28)).is_some_and(|&b| b != LIGHT && !is_glass(b))
+                    && world.get(&(26, y, 28)).is_some_and(|&b| b != LIGHT && !is_glass(b))
             })
             .count();
-        assert!(fins >= 8, "{fins} fins along the front");
+        assert!(floors >= 3, "{floors} floor rows remain");
     }
 
     /// With furnished interiors the same tower keeps glass that can be seen
