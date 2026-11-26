@@ -6,7 +6,7 @@ function build(p){
  const {width:w,height:h,style,base,glass,frame}=p;
  if(!Number.isInteger(w)||!Number.isInteger(h)||w<9||w>60||h<8||h>50)throw Error("bad preview dimensions");
  const depth=4,c=Math.floor(w/2),m=new Map(),set=(x,y,z,b)=>{if(x<0||x>=w||y<0||y>=h||z<0||z>=depth)throw Error("out of preview");m.set(`${x},${y},${z}`,b)};
- const styles=["sails","stone","openwork","garden","two_glass","ceramic","plaid","brass"];
+ const styles=["sails","stone","openwork","garden","two_glass","ceramic","plaid","brass","illuminated_arch","double_skin","lattice_eaves"];
  if(!styles.includes(style))throw Error("unknown style");
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
   const border=x===0||x===w-1||y===0||y===h-1;
@@ -24,6 +24,9 @@ function build(p){
    if(style==="two_glass") b=x<c?"light_gray_stained_glass":"gray_stained_glass";
    if(style==="plaid") b=(x%5===0||y%5===0)?frame:glass;
    if(style==="brass") b=((x+y)%6===0||(x-y+60)%6===0)?frame:glass;
+   if(style==="illuminated_arch") b=(x%7===0||y===6)?base:glass;
+   if(style==="double_skin") b=(x%5===0||((x*3+y*2)%17===0))?"white_concrete":glass;
+   if(style==="lattice_eaves") b=(x%4===0||y%5===0)?frame:glass;
   }
   set(x,y,2,b);
   if(y>=6&&!border){
@@ -33,6 +36,15 @@ function build(p){
    }
    if(style==="garden"&&x%5===1&&y%3!==0)set(x,y,1,"azalea_leaves[persistent=true]");
    if(style==="openwork"&&(x%4===0||y%4===0))set(x,y,1,frame);
+   if(style==="illuminated_arch"){
+    // Approximate 16m rise (11 vertical rows plus 5 stepped arch rows).
+    const u=(x-1)%7, r=y-6;
+    const arch=(r>=0&&r<=11&&(u===0||u===6))||
+      (r>=12&&r<=16&&((u===1||u===5)&&r<=13||(u===2||u===4)&&r>=14&&r<=15||u===3&&r===16));
+    if(arch)set(x,y,1,"sea_lantern");
+   }
+   if(style==="double_skin")set(x,y,0,(x%7===1||y%7===0)?frame:"glass");
+   if(style==="lattice_eaves"&&(y===h-2||y===h-3&&x%3===0))set(x,y,0,frame);
   }
   // lamps behind actual transparent cells; never in the entrance path.
   if((show||b.includes("glass"))&&x%4===2&&y%4===2)set(x,y,3,"light[level=15]");
@@ -49,6 +61,8 @@ function test(profiles,inv){
   if(JSON.stringify(a)!==JSON.stringify(b))throw Error("nondeterministic");
   if(!a.cells.some(q=>q.block.includes("glass"))||!a.cells.some(q=>q.block.includes("light[")))throw Error("missing window or light "+p.id);
   if(a.cells.some(q=>q.xyz[0]>=c-1&&q.xyz[0]<=c+1&&q.xyz[1]>=1&&q.xyz[1]<=3))throw Error("entrance obstructed "+p.id);
+  if(p.style==="illuminated_arch"&&!a.cells.some(q=>q.block==="minecraft:sea_lantern"))throw Error("arch is not emissive");
+  if(p.style==="double_skin"&&!a.cells.some(q=>q.xyz[2]===0&&q.block==="minecraft:gold_block"))throw Error("missing outer skin");
   if(a.cells.length>a.width*a.height*a.length||new Set(a.cells.map(q=>q.xyz.join(","))).size!==a.cells.length)throw Error("duplicates");
   n+=a.cells.length;
  }

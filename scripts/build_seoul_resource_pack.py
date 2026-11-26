@@ -21,6 +21,12 @@ SLOTS = (
     ("polished_blackstone", "292C30", 255, "stone"),
     ("brown_concrete", "796044", 255, "metal"),
 )
+BOUTIQUE_SLOTS = (
+    ("dark_prismarine", "267757", 255, "ceramic"),
+    ("gold_block", "B99B58", 255, "brushed"),
+    ("quartz_block_bottom", "E7E1D5", 255, "stone"),
+    ("black_concrete", "222528", 255, "panel"),
+)
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -38,6 +44,10 @@ def pixel(slot, x, y, n):
     delta = h % 9 - 4 if style == "stone" else h % 5 - 2
     if style == "panel" and x == 0:
         delta = -4
+    if style == "ceramic":
+        delta = -13 if x % (n//4) == 0 or y % (n//4) == 0 else h % 9 - 4
+    if style == "brushed":
+        delta = ((y * 13 + len(name)) % 9) - 4
     return (*[max(0, min(255, v + delta)) for v in rgb], 255)
 
 
@@ -77,14 +87,14 @@ def verify_png(data, slot, n):
     assert tuple(scan[(n//3)*(n*4+1)+1+4*(n//3):(n//3)*(n*4+1)+5+4*(n//3)])[-1] == slot[2]
 
 
-def build(out, n):
-    meta = {"pack": {"pack_format": 34, "description": f"Arnis Seoul Core {n}px (Java 1.21–1.21.1)"}}
+def build(out, n, slots=SLOTS, variant="core"):
+    meta = {"pack": {"pack_format": 34, "description": f"Arnis Seoul {variant.title()} {n}px (Java 1.21–1.21.1)"}}
     files = {"pack.mcmeta": (json.dumps(meta, ensure_ascii=False, indent=2)+"\n").encode()}
-    for slot in SLOTS:
+    for slot in slots:
         data = png(slot, n)
         verify_png(data, slot, n)
         files[f"assets/minecraft/textures/block/{slot[0]}.png"] = data
-    path = out / f"arnis-seoul-core-{n}px.zip"
+    path = out / f"arnis-seoul-{variant}-{n}px.zip"
     with zipfile.ZipFile(path, "w") as z:
         for name, data in sorted(files.items()):
             info = zipfile.ZipInfo(name, (1980,1,1,0,0,0))
@@ -94,7 +104,7 @@ def build(out, n):
         assert z.testzip() is None
         assert set(z.namelist()) == set(files)
         assert json.loads(z.read("pack.mcmeta"))["pack"]["pack_format"] == 34
-        for slot in SLOTS:
+        for slot in slots:
             verify_png(z.read(f"assets/minecraft/textures/block/{slot[0]}.png"), slot, n)
     return path
 
@@ -102,9 +112,9 @@ def build(out, n):
 def main():
     out = Path(sys.argv[1] if len(sys.argv)>1 else "dist")
     out.mkdir(parents=True, exist_ok=True)
-    paths = [build(out, n) for n in (16,32)]
+    paths = [build(out, n) for n in (16,32)] + [build(out, n, BOUTIQUE_SLOTS, "boutique") for n in (16,32)]
     (out/"SHA256SUMS.txt").write_text("".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n" for p in paths), encoding="ascii")
-    print("Verified 22 RGBA PNG textures and 2 resource packs.")
+    print(f"Verified {2*(len(SLOTS)+len(BOUTIQUE_SLOTS))} RGBA PNG textures and 4 resource packs.")
 
 
 if __name__ == "__main__":

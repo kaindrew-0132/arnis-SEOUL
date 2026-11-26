@@ -5,6 +5,7 @@ on:
     paths:
       - 'assets/seoul/**'
       - 'scripts/*seoul_boutiques.cjs'
+      - 'scripts/build_seoul_resource_pack.py'
       - '.github/workflows/seoul-boutique-facades.yml'
   workflow_dispatch:
 permissions:
@@ -17,6 +18,12 @@ jobs:
       - run: node scripts/review_seoul_boutiques.cjs --self-test
       - run: node scripts/associate_seoul_boutiques.cjs --self-test
       - run: node scripts/build_seoul_boutiques.cjs boutique-dist
+      - run: python3 scripts/build_seoul_resource_pack.py pack-dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: seoul-core-and-boutique-resource-packs
+          path: pack-dist/
+          if-no-files-found: error
       - uses: actions/upload-artifact@v7
         with:
           name: seoul-boutique-facade-previews

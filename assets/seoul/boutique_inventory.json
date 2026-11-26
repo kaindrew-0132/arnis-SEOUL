@@ -311,9 +311,13 @@
       "number": "435",
       "status": "address_verified",
       "source": "https://stores.cartier.com/south-korea/seoul/435%2C-apgujeong-ro%2C-gangnam-gu",
-      "architecture_source": null,
-      "geometry": "Verify facade geometry and entire-building occupancy",
-      "material_slots": [],
+      "architecture_source": "https://www.allurekorea.com/2016/07/31/플래그십-스토어-까르띠에-메종-청담/",
+      "geometry": "Hanok-derived eaves and lattice on 2016 maison; contemporary appearance still requires visual confirmation",
+      "material_slots": [
+        "smooth_quartz",
+        "brown_concrete",
+        "light_gray_stained_glass"
+      ],
       "osm_identity": null,
       "occupancy": "maison"
     },
@@ -325,9 +329,13 @@
       "number": "7",
       "status": "address_verified",
       "source": "https://www.hermes.com/gr/en/legal/6469-apple-watch-hermes-locations/",
-      "architecture_source": "https://www.hermes.com/us/en/find-store/south-korea/seoul/hermes-maison-dosan-G16N38FW/",
-      "geometry": "Verify actual footprint and elevations",
-      "material_slots": [],
+      "architecture_source": "https://www.kia.or.kr/data/works.php?code=works&idx=15676&page=15&ptype=view",
+      "geometry": "Double glass skin, wide gold lines outside, fine white irregular lines inside; central courtyard not part of facade preview",
+      "material_slots": [
+        "glass",
+        "gold_block",
+        "white_concrete"
+      ],
       "osm_identity": null,
       "occupancy": "maison"
     },
@@ -491,6 +499,75 @@
       "status": "address_verified",
       "osm_identity": null,
       "occupancy": "review_required"
+    },
+    {
+      "id": "fendi-442",
+      "brand": "Fendi",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "442",
+      "source": "https://www.fendi.com/kr-ko/store-locator/대한민국/강남구-압구정로-442",
+      "architecture_source": "https://www.fi.co.kr/main/view.asp?idx=78276",
+      "geometry": "16m illuminated arch motif; overall dimensions and exact arch count not surveyed",
+      "material_slots": [
+        "white_concrete",
+        "light_gray_stained_glass",
+        "sea_lantern"
+      ],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "ysl-436",
+      "brand": "Saint Laurent",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "436",
+      "source": "https://www.ysl.com/ko-kr/stores/seoul-flagship-35032",
+      "architecture_source": null,
+      "geometry": "Two retail floors reported; exterior not verified",
+      "material_slots": [],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "miumiu-439",
+      "brand": "Miu Miu",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "439",
+      "source": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=142053",
+      "architecture_source": null,
+      "geometry": "Tourism listing; operating/reference date and exterior require verification",
+      "material_slots": [],
+      "status": "reference_date_review",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "chromehearts-seolleung-24",
+      "brand": "Chrome Hearts",
+      "street": "선릉로162길",
+      "street_en": "Seolleung-ro 162-gil",
+      "number": "24",
+      "source": "https://www.ktriptips.com/kor/shopping/2917291",
+      "architecture_source": null,
+      "geometry": "Tourism listing; independent facade and operating date need confirmation",
+      "material_slots": [],
+      "status": "reference_date_review",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    }
+  ],
+  "future_sites": [
+    {
+      "brand": "Bottega Veneta",
+      "status": "future_opening_reported",
+      "year": 2027,
+      "source": "https://www.donga.com/news/Economy/article/all/20260706/134247149/2",
+      "note": "No 2026 facade or location override; independent flagship reported for 2027."
     }
   ]
 }

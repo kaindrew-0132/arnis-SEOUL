@@ -81,6 +81,39 @@
       "glass": "glass",
       "frame": "brown_concrete",
       "source": "https://stores.vacheron-constantin.com/ko/south-korea/seoul/430-apgujeong-ro"
+    },
+    {
+      "id": "fendi-442",
+      "style": "illuminated_arch",
+      "width": 23,
+      "height": 23,
+      "base": "smooth_quartz",
+      "glass": "light_gray_stained_glass",
+      "frame": "sea_lantern",
+      "source": "https://www.fi.co.kr/main/view.asp?idx=78276",
+      "note": "16-block arch rise, count/spacing and total size approximate"
+    },
+    {
+      "id": "hermes-dosan-7",
+      "style": "double_skin",
+      "width": 23,
+      "height": 30,
+      "base": "white_concrete",
+      "glass": "glass",
+      "frame": "gold_block",
+      "source": "https://www.kia.or.kr/data/works.php?code=works&idx=15676&page=15&ptype=view",
+      "note": "1-block separation exaggerates actual 30cm spacing"
+    },
+    {
+      "id": "cartier-435",
+      "style": "lattice_eaves",
+      "width": 21,
+      "height": 18,
+      "base": "smooth_quartz",
+      "glass": "light_gray_stained_glass",
+      "frame": "brown_concrete",
+      "source": "https://www.allurekorea.com/2016/07/31/플래그십-스토어-까르띠에-메종-청담/",
+      "note": "2016 concept, not a survey of current facade"
     }
   ]
 }
