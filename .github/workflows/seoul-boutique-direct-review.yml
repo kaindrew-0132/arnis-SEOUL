@@ -1,0 +1,29 @@
+name: Seoul boutique direct map review
+on:
+  push:
+    branches: ['feature/boutique-facades']
+    paths:
+      - 'scripts/fetch_seoul_boutique_candidates.py'
+      - '.github/workflows/seoul-boutique-direct-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read only three hinted ways from OSM API
+        run: |
+          mkdir -p direct-review
+          printf '%s\n' '© OpenStreetMap contributors, ODbL 1.0; https://www.openstreetmap.org/copyright' > direct-review/ATTRIBUTION.txt
+          python3 scripts/fetch_seoul_boutique_candidates.py direct-review/candidates.json
+          node scripts/plan_seoul_boutique_placement.cjs direct-review/candidates.json > direct-review/review.json
+          node -e 'const a=require("./direct-review/review.json"); for(const r of a.records)if(r.candidates.length)console.log(JSON.stringify({site:r.site,ways:r.candidates.map(c=>({id:c.way,evidence:c.evidence,area:c.footprint_area_m2})),approved:false}))'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: seoul-boutique-direct-review
+          path: direct-review/
+          if-no-files-found: warn

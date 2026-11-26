@@ -9237,6 +9237,18 @@ fn build_wall_ring(
     let passage_height = config.passage_height.min(config.building_height);
     let columns = facade_columns(nodes, config);
     let ring_cells: FnvHashSet<(i32, i32)> = columns.iter().map(|c| (c.x, c.z)).collect();
+    // The registry contains only explicitly reviewed OSM way + edge IDs.
+    // A changed footprint, clipped ring, or unsupported scale must fall back.
+    let boutique = if !args.interior && config.is_ground_level
+        && config.condition == BuildingCondition::Normal && config.seoul_landmark.is_none()
+        && !config.seoul_parc1 && (args.scale - 1.0).abs() < 1e-6
+        && args.rotation.rem_euclid(360.0).abs() < 1e-6
+        && editor.format() == crate::world_editor::WorldFormat::JavaAnvil
+        && seoul_boutique_wall::has_approval(config.element_id)
+    {
+        let ring: Vec<_> = nodes.iter().map(|n| (n.id,n.x,n.z)).collect();
+        seoul_boutique_wall::resolve(config.element_id, &ring, config.building_height)
+    } else { None };
 
     for wc in columns.iter() {
         let (bx, bz) = (wc.x, wc.z);
@@ -9343,6 +9355,32 @@ fn build_wall_ring(
             .then(|| shop_backdrop_cell(config, wc, floor_cells, &ring_cells))
             .flatten();
         for h in wall_start..=column_top {
+            if !flat && !col.party && !col.corner && !is_passage && h > door_top {
+                if let Some(material) = boutique.as_ref().and_then(|p| p.material(bx,bz,h-config.start_y_offset)) {
+                    use seoul_boutique_wall::Material::*;
+                    let block = match material {
+                        Clear => GLASS,
+                        Silver => LIGHT_GRAY_STAINED_GLASS,
+                        Smoke => GRAY_STAINED_GLASS,
+                        Dark => BLACK_STAINED_GLASS,
+                        White => WHITE_CONCRETE,
+                        Stone => SMOOTH_QUARTZ,
+                        Black => POLISHED_BLACKSTONE,
+                        Gray => GRAY_CONCRETE,
+                        Metal => LIGHT_GRAY_CONCRETE,
+                        Brown => BROWN_CONCRETE,
+                        Brass => GOLD_BLOCK,
+                        Green => DARK_PRISMARINE,
+                        Lamp => SEA_LANTERN,
+                    };
+                    kind.windowed |= is_glass_wall(block);
+                    // Only the existing wall plane: no road, next shop, interior,
+                    // door, upper storey, or out-of-footprint write. Do not add
+                    // the generic opaque glass backing in this custom span.
+                    editor.set_block_absolute(block,bx,h+config.abs_terrain_offset,bz,None,None);
+                    continue;
+                }
+            }
             let block = determine_wall_block_at_position(bx, h, bz, config, col, flat);
             let glazed = !flat
                 && (block == config.window_block
@@ -14783,6 +14821,8 @@ fn seoul_floor_levels(config: &BuildingConfig) -> Option<Vec<i32>> {
 mod seoul_amore_geometry;
 #[path = "seoul_tower_geometry.rs"]
 mod seoul_tower_geometry;
+#[path = "seoul_boutique_wall.rs"]
+mod seoul_boutique_wall;
 
 fn try_seoul_tower_geometry(editor: &mut WorldEditor, cells: &[(i32,i32)], config: &BuildingConfig, tags: &HashMap<String,String>) -> bool {
     use seoul_tower_geometry::{Cell, Plan};
