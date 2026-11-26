@@ -3336,6 +3336,21 @@ enum SeoulLandmark {
     LotteWorldTower,
     Building63,
     OneBailey,
+    Ifc,
+    AcroSeoulForest,
+    GalleriaForet,
+    Warner,
+    Eterno,
+    Ph129,
+    TowerPalace,
+    Centerfield,
+    Parnas,
+    GangnamFinance,
+    TradeTower,
+    Amorepacific,
+    AcroRiverPark,
+    OnePentas,
+    Caelitus,
 }
 
 impl SeoulLandmark {
@@ -3345,6 +3360,18 @@ impl SeoulLandmark {
             Self::LotteWorldTower => (LIGHT_GRAY_STAINED_GLASS, WHITE_CONCRETE),
             Self::Building63 => (YELLOW_STAINED_GLASS, BROWN_CONCRETE),
             Self::OneBailey => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
+            Self::Ifc => (LIGHT_GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::AcroSeoulForest => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
+            Self::GalleriaForet => (LIGHT_BLUE_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Warner => (GRAY_STAINED_GLASS, GRAY_CONCRETE),
+            Self::Eterno | Self::Ph129 => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
+            Self::TowerPalace => (GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Centerfield => (GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Parnas | Self::GangnamFinance | Self::TradeTower =>
+                (LIGHT_BLUE_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Amorepacific => (LIGHT_GRAY_STAINED_GLASS, WHITE_CONCRETE),
+            Self::AcroRiverPark | Self::OnePentas | Self::Caelitus =>
+                (GRAY_STAINED_GLASS, WHITE_CONCRETE),
         }
     }
 }
@@ -6180,6 +6207,60 @@ fn compute_detail_tier(
     }
 }
 
+/// An exact complex name followed by a numbered building suffix. Do not match
+/// the complex name by itself or unrelated words that merely contain it.
+fn named_tower(name: &str, prefixes: &[&str]) -> bool {
+    prefixes.iter().any(|prefix| {
+        name.strip_prefix(*prefix).is_some_and(|suffix| {
+            let suffix = suffix.strip_suffix('동').unwrap_or(suffix);
+            suffix.len() == 3 && suffix.bytes().all(|b| b.is_ascii_digit())
+        })
+    })
+}
+
+fn additional_seoul_landmark(name: &str, height_m: f64) -> Option<SeoulLandmark> {
+    use SeoulLandmark::*;
+    let high = (100.0..=350.0).contains(&height_m);
+    let residential = (50.0..=280.0).contains(&height_m);
+    let boutique_residential = (25.0..=110.0).contains(&height_m);
+    if high {
+        if matches!(name, "oneifc" | "twoifc" | "threeifc" | "ifc1" | "ifc2" | "ifc3"
+            | "oneinternationalfinancecenter" | "twointernationalfinancecenter"
+            | "threeinternationalfinancecenter" | "ifc서울1타워" | "ifc서울2타워" | "ifc서울3타워") {
+            return Some(Ifc);
+        }
+        if matches!(name, "센터필드east" | "센터필드west" | "centerfieldeast" | "centerfieldwest"
+            | "센터필드이스트" | "센터필드웨스트") { return Some(Centerfield); }
+        if matches!(name, "파르나스타워" | "parnastower") { return Some(Parnas); }
+        if matches!(name, "강남파이낸스센터" | "gangnamfinancecenter") { return Some(GangnamFinance); }
+        if matches!(name, "트레이드타워" | "tradetower" | "무역센터트레이드타워") { return Some(TradeTower); }
+    }
+    if residential {
+        if named_tower(name, &["아크로서울포레스트", "acroseoulforest"]) { return Some(AcroSeoulForest); }
+        if named_tower(name, &["갤러리아포레", "galleriaforet"]) { return Some(GalleriaForet); }
+        if named_tower(name, &["아크로리버파크", "acroriverpark"]) { return Some(AcroRiverPark); }
+        if named_tower(name, &["래미안원펜타스", "원펜타스", "raemianonepentas"]) { return Some(OnePentas); }
+        if named_tower(name, &["래미안첼리투스", "raemiancaelitus"]) { return Some(Caelitus); }
+        if matches!(name, "타워팰리스g동" | "타워팰리스3차g동" | "towerpalaceg"
+            | "towerpalaceiii" | "타워팰리스3차") { return Some(TowerPalace); }
+        for letter in ["a", "b", "c", "d", "e", "f"] {
+            if name == format!("타워팰리스{letter}동") || name == format!("towerpalace{letter}") {
+                return Some(TowerPalace);
+            }
+        }
+    }
+    if boutique_residential {
+        if matches!(name, "워너청담" | "onercheongdam" | "warnercheongdam") { return Some(Warner); }
+        if matches!(name, "에테르노청담" | "eternocheongdam") { return Some(Eterno); }
+        if matches!(name, "ph129" | "더펜트하우스청담" | "thepenthousecheongdam") { return Some(Ph129); }
+    }
+    if (65.0..=130.0).contains(&height_m)
+        && matches!(name, "아모레퍼시픽본사" | "아모레퍼시픽사옥" | "amorepacificheadquarters" | "아모레퍼시픽세계본사") {
+        return Some(Amorepacific);
+    }
+    None
+}
+
 /// Match explicitly named mapped tower elements, not neighbouring buildings,
 /// a complex relation, or a guessed OSM ID. Map anchor is only a coarse guard.
 fn seoul_landmark(
@@ -6228,6 +6309,9 @@ fn seoul_landmark(
                     }
                 }
             }
+        }
+        if let Some(profile) = additional_seoul_landmark(&name, height_m) {
+            return Some(profile);
         }
     }
     None
@@ -11133,6 +11217,19 @@ fn determine_wall_block_at_position_pristine(
             SeoulLandmark::OneBailey => if col.corner { frame } else if band { GRAY_CONCRETE } else { glass },
             SeoulLandmark::LotteWorldTower => if col.corner { frame } else { glass },
             SeoulLandmark::Building63 => glass,
+            SeoulLandmark::Ifc | SeoulLandmark::Parnas | SeoulLandmark::GangnamFinance
+                | SeoulLandmark::TradeTower => if col.corner { frame } else { glass },
+            SeoulLandmark::AcroSeoulForest | SeoulLandmark::GalleriaForet
+                | SeoulLandmark::TowerPalace | SeoulLandmark::AcroRiverPark
+                | SeoulLandmark::OnePentas | SeoulLandmark::Caelitus =>
+                    if band || col.corner { frame } else { glass },
+            SeoulLandmark::Warner | SeoulLandmark::Centerfield =>
+                    if band { GRAY_CONCRETE } else if col.corner { frame } else { glass },
+            SeoulLandmark::Eterno | SeoulLandmark::Ph129 =>
+                    if band || col.corner || config.slot_of(col) == BaySlot::Pier { frame } else { glass },
+            // Only the mapped envelope here: the actual courtyard and large
+            // openings need dedicated geometry, never a painted fake void.
+            SeoulLandmark::Amorepacific => if band || col.corner { frame } else { glass },
         };
     }
     let block = unzoned_wall_block(h, config, col);
@@ -25903,6 +26000,46 @@ mod style_tests {
         assert_eq!(seoul_landmark(seoul, &tags, 110.0), Some(SeoulLandmark::OneBailey));
         tags.insert("building:part".into(), "yes".into());
         assert_eq!(seoul_landmark(seoul, &tags, 110.0), None);
+    }
+
+    #[test]
+    fn additional_seoul_landmark_aliases_are_exact_and_height_guarded() {
+        use SeoulLandmark::*;
+        let cases = [
+            ("oneifc", 170.0, Ifc), ("아크로서울포레스트101동", 180.0, AcroSeoulForest),
+            ("갤러리아포레101동", 200.0, GalleriaForet), ("워너청담", 75.0, Warner),
+            ("에테르노청담", 70.0, Eterno), ("ph129", 60.0, Ph129),
+            ("타워팰리스g동", 260.0, TowerPalace), ("centerfieldeast", 150.0, Centerfield),
+            ("파르나스타워", 180.0, Parnas), ("강남파이낸스센터", 200.0, GangnamFinance),
+            ("트레이드타워", 200.0, TradeTower), ("아모레퍼시픽본사", 100.0, Amorepacific),
+            ("아크로리버파크101동", 110.0, AcroRiverPark),
+            ("래미안원펜타스101동", 100.0, OnePentas),
+            ("래미안첼리투스101동", 180.0, Caelitus),
+        ];
+        for (name, height, expected) in cases {
+            assert_eq!(additional_seoul_landmark(name, height), Some(expected));
+            assert_eq!(additional_seoul_landmark(name, 10.0), None);
+            assert_eq!(additional_seoul_landmark(&format!("{name}상가"), height), None);
+        }
+        assert_eq!(additional_seoul_landmark("아크로서울포레스트", 180.0), None);
+        assert_eq!(additional_seoul_landmark("ifcmall", 170.0), None);
+        assert_eq!(additional_seoul_landmark("용산푸르지오써밋", 150.0), None);
+        assert_eq!(additional_seoul_landmark("압구정현대101동", 100.0), None);
+    }
+
+    #[test]
+    fn expanded_shells_keep_party_walls_opaque_and_vision_glass_clear() {
+        let mut config = test_config(160, false, false);
+        let plain = ColumnFacade::default();
+        let party = ColumnFacade { party: true, ..Default::default() };
+        let h = config.start_y_offset + config.grammar_anchor() + 3 * config.floor_cycle + 1;
+        for profile in [SeoulLandmark::Ifc, SeoulLandmark::AcroSeoulForest,
+                        SeoulLandmark::Warner, SeoulLandmark::Amorepacific,
+                        SeoulLandmark::TowerPalace, SeoulLandmark::Centerfield] {
+            config.seoul_landmark = Some(profile);
+            assert!(is_glass_wall(determine_wall_block_at_position_pristine(h, &config, plain)));
+            assert!(!is_glass_wall(determine_wall_block_at_position_pristine(h, &config, party)));
+        }
     }
 
     #[test]
