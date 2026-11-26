@@ -1,0 +1,18 @@
+name: Seoul boutique review
+on:
+  push:
+    branches: ['feature/boutique-inventory']
+    paths:
+      - 'assets/seoul/**'
+      - 'scripts/*seoul_boutiques.cjs'
+      - '.github/workflows/seoul-boutique-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: node scripts/review_seoul_boutiques.cjs --self-test
+      - run: node scripts/associate_seoul_boutiques.cjs --self-test

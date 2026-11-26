@@ -1,0 +1,6 @@
+# Boutique evidence and spatial review, batch 4
+Extends batch 3 with six official-address records (ten total, nine brands).
+The inventory is still not a verified store census. Prada's temporary location is separate from its historical site. Moncler and Richard Mille explicitly occupy floors 1–2; a storefront profile is required rather than whole-building replacement. Van Cleef & Arpels' official architectural account describes an openwork facade and garden; the exact geometry is not yet surveyed.
+
+Run `node scripts/associate_seoul_boutiques.cjs --self-test` and `node scripts/associate_seoul_boutiques.cjs district-overpass.json`.
+For exact brand-matched nodes, report closed building ways whose polygons contain the POI. Boundary points and overlapping ways remain ambiguous. Relations, missing/open geometry, and building parts are not treated as whole-building matches; unsupported geometries are reported. This tool does not validate polygon topology beyond basic closure and degeneracy, or prove tenancy, facade orientation, reference date or identity. Every result is review-only, never an approved generator override. Input must be pre-cropped to the target district. Actual map export and manual verification remain pending.
