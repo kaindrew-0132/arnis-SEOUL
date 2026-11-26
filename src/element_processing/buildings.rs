@@ -6158,6 +6158,86 @@ fn compute_detail_tier(
     }
 }
 
+/// Seoul's ordinary urban fabric uses a smaller decorative budget. The
+/// geographic anchor is the map's reference point, not an administrative boundary.
+fn seoul_compact_facade(
+    anchor: (f64, f64),
+    tags: &HashMap<String, String>,
+    category: BuildingCategory,
+    height_m: f64,
+) -> bool {
+    let (lat, lon) = anchor;
+    if !(37.40..=37.72).contains(&lat)
+        || !(126.75..=127.20).contains(&lon)
+        || height_m >= 150.0
+        || tags.contains_key("building:part")
+        || tags.contains_key("wikidata")
+        || tags.contains_key("building:architecture")
+        || tags.contains_key("architecture")
+        || tags.get("historic").is_some_and(|v| v != "no")
+        || tags.get("heritage").is_some_and(|v| v != "no")
+        || tags.get("tourism").is_some_and(|v| {
+            matches!(v.as_str(), "attraction" | "museum" | "gallery" | "viewpoint")
+        })
+        || is_sloped_glass_facade(tags)
+        || ["name", "name:ko", "name:en"].iter().any(|key| {
+            tags.get(*key).is_some_and(|name| {
+                let name = name.to_lowercase();
+                ["파크원", "parc1", "롯데월드타워", "lotte world tower", "63빌딩", "63 building"]
+                    .iter()
+                    .any(|part| name.contains(*part))
+            })
+        })
+    {
+        return false;
+    }
+    matches!(
+        category,
+        BuildingCategory::Residential
+            | BuildingCategory::House
+            | BuildingCategory::Commercial
+            | BuildingCategory::Office
+            | BuildingCategory::Hotel
+            | BuildingCategory::TallBuilding
+            | BuildingCategory::GlassySkyscraper
+            | BuildingCategory::GlassCornerSkyscraper
+            | BuildingCategory::GridSkyscraper
+            | BuildingCategory::ContemporarySkyscraper
+            | BuildingCategory::ModernSkyscraper
+            | BuildingCategory::Default
+    )
+}
+
+/// Preserve the main wall, glazing, roof and floor materials, while reusing
+/// a single opaque accent for optional bands and trim.
+fn compact_facade_config(mut config: BuildingConfig) -> BuildingConfig {
+    config.detail = config.detail.min(DetailTier::Standard);
+    config.wall_depth_style = WallDepthStyle::None;
+    config.window_frame = None;
+    config.window_reveal = None;
+    config.window_pane = None;
+    config.shutters = None;
+    config.sunshade = None;
+    config.hot_window_units = false;
+    config.split_units = false;
+    config.pilasters = None;
+    config.coursed = false;
+    config.surrounds = false;
+    config.recess_windows = false;
+    if !is_glass_wall(config.accent_block) {
+        let accent = config.accent_block;
+        let compact = |block: Block| if is_glass_wall(block) { block } else { accent };
+        config.trim_block = compact(config.trim_block);
+        config.spandrel_block = compact(config.spandrel_block);
+        config.base_course_block = config.base_course_block.map(compact);
+        config.window_panel = config.window_panel.map(compact);
+        config.floor_band = config.floor_band.map(compact);
+        config.top_band = config.top_band.map(|(block, rows)| (compact(block), rows));
+        config.shop_frame = compact(config.shop_frame);
+    }
+    config
+}
+
 /// Wood species a nordic climate adds to the residential palette.
 const NORDIC_WOOD_ADDITIONS: [Block; 3] = [SPRUCE_PLANKS, OAK_PLANKS, DARK_OAK_PLANKS];
 
@@ -15657,6 +15737,19 @@ pub fn generate_buildings(
     } else {
         config
     };
+    let compact_facade = !args.interior
+        && config.condition == BuildingCondition::Normal
+        && seoul_compact_facade(
+            editor.geo_anchor(),
+            &element.tags,
+            category,
+            f64::from(building_height) / scale_factor,
+        );
+    let config = if compact_facade {
+        compact_facade_config(config)
+    } else {
+        config
+    };
     // Over water a building stands on its plinth down to the bed, a houseboat on its hull;
     // a boathouse keeps the water it shelters.
     if config.is_ground_level && building_type != "boathouse" {
@@ -15948,14 +16041,16 @@ pub fn generate_buildings(
         facade: outline_facade.as_ref(),
         strip: &eave_strip,
     });
-    generate_window_frames(
-        editor,
-        element,
-        &config,
-        effective_passages,
-        &facade,
-        part_probe,
-    );
+    if !compact_facade {
+        generate_window_frames(
+            editor,
+            element,
+            &config,
+            effective_passages,
+            &facade,
+            part_probe,
+        );
+    }
     let fire_escape = !is_part
         && generate_fire_escape(
             editor,
@@ -15977,72 +16072,74 @@ pub fn generate_buildings(
             stepped_outline.as_ref(),
         );
     }
-    generate_window_life(
-        editor,
-        element,
-        &config,
-        effective_passages,
-        &facade,
-        part_probe,
-        (!is_part && group_other_cells.is_empty()).then_some(window_floor),
-        Some(ctx.building_footprints),
-    );
-    generate_window_reveals(
-        editor,
-        element,
-        &config,
-        effective_passages,
-        &facade,
-        part_probe,
-    );
-    generate_sunshades(
-        editor,
-        element,
-        &config,
-        effective_passages,
-        &facade,
-        part_probe,
-    );
-    generate_condensers(
-        editor,
-        element,
-        &config,
-        effective_passages,
-        &facade,
-        part_probe,
-    );
-    generate_wall_depth_features(
-        editor,
-        element,
-        &config,
-        has_sloped_roof,
-        effective_passages,
-        &facade,
-        part_probe,
-    );
-
-    generate_facade_cornices(
-        editor,
-        element,
-        &config,
-        has_sloped_roof,
-        effective_passages,
-        &facade,
-        part_probe,
-    );
-
-    // Add corner quoins (accent-block columns at building corners)
-    if !is_part {
-        generate_corner_quoins(editor, element, &config, effective_passages, &facade);
-        generate_corner_downpipes(
+    if !compact_facade {
+        generate_window_life(
             editor,
             element,
             &config,
             effective_passages,
             &facade,
-            stepped_outline.as_ref(),
+            part_probe,
+            (!is_part && group_other_cells.is_empty()).then_some(window_floor),
+            Some(ctx.building_footprints),
         );
-        generate_storefront_awnings(editor, element, &config, effective_passages, &facade);
+        generate_window_reveals(
+            editor,
+            element,
+            &config,
+            effective_passages,
+            &facade,
+            part_probe,
+        );
+        generate_sunshades(
+            editor,
+            element,
+            &config,
+            effective_passages,
+            &facade,
+            part_probe,
+        );
+        generate_condensers(
+            editor,
+            element,
+            &config,
+            effective_passages,
+            &facade,
+            part_probe,
+        );
+        generate_wall_depth_features(
+            editor,
+            element,
+            &config,
+            has_sloped_roof,
+            effective_passages,
+            &facade,
+            part_probe,
+        );
+
+        generate_facade_cornices(
+            editor,
+            element,
+            &config,
+            has_sloped_roof,
+            effective_passages,
+            &facade,
+            part_probe,
+        );
+
+        // Add corner quoins (accent-block columns at building corners)
+        if !is_part {
+            generate_corner_quoins(editor, element, &config, effective_passages, &facade);
+            generate_corner_downpipes(
+                editor,
+                element,
+                &config,
+                effective_passages,
+                &facade,
+                stepped_outline.as_ref(),
+            );
+            generate_storefront_awnings(editor, element, &config, effective_passages, &facade);
+        }
     }
 
     // Create roof area = floor area + wall outline (so roof covers the walls too)
@@ -25430,6 +25527,46 @@ mod style_tests {
             compute_detail_tier(&notable, BuildingCategory::Historic, 600, 20, true),
             DetailTier::Landmark
         );
+    }
+
+    #[test]
+    fn seoul_compact_facades_protect_mapped_landmarks_and_other_cities() {
+        let seoul = (37.525, 126.93);
+        let mut tags = HashMap::new();
+        let office = BuildingCategory::Office;
+        assert!(seoul_compact_facade(seoul, &tags, office, 80.0));
+        assert!(!seoul_compact_facade(seoul, &tags, office, 150.0));
+        assert!(!seoul_compact_facade((40.7, -74.0), &tags, office, 80.0));
+        tags.insert("name".into(), "파크원 타워".into());
+        assert!(!seoul_compact_facade(seoul, &tags, office, 80.0));
+        tags.clear();
+        tags.insert("building:part".into(), "yes".into());
+        assert!(!seoul_compact_facade(seoul, &tags, office, 80.0));
+        tags.clear();
+        tags.insert("heritage".into(), "2".into());
+        assert!(!seoul_compact_facade(seoul, &tags, office, 80.0));
+    }
+
+    #[test]
+    fn seoul_compact_facades_keep_primary_materials_and_reuse_accents() {
+        let mut config = test_config(40, false, false);
+        config.detail = DetailTier::Enhanced;
+        config.floor_band = Some(BLACK_CONCRETE);
+        config.top_band = Some((GRAY_CONCRETE, 2));
+        config.window_panel = Some(GRAY_STAINED_GLASS);
+        config.shutters = Some(OAK_PLANKS);
+        config.hot_window_units = true;
+        let config = compact_facade_config(config);
+        assert_eq!(config.wall_block, BRICK);
+        assert_eq!(config.window_block, GLASS);
+        assert_eq!(config.floor_block, OAK_PLANKS);
+        assert_eq!(config.building_height, 40);
+        assert_eq!(config.detail, DetailTier::Standard);
+        assert_eq!(config.floor_band, Some(SMOOTH_STONE));
+        assert_eq!(config.top_band, Some((SMOOTH_STONE, 2)));
+        assert_eq!(config.window_panel, Some(GRAY_STAINED_GLASS));
+        assert!(config.shutters.is_none());
+        assert!(!config.hot_window_units);
     }
 
     #[test]
