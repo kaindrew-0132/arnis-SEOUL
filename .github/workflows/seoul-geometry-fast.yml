@@ -1,7 +1,7 @@
 name: Seoul geometry fast tests
 on:
   push:
-    branches: ['feature/special-geometry']
+    branches: ['feature/special-geometry', 'feature/boutique-facades']
     paths:
       - 'src/element_processing/**'
       - 'tests/seoul_geometry_smoke.rs'

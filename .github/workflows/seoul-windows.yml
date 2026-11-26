@@ -2,7 +2,7 @@ name: Seoul Windows baseline
 
 on:
   push:
-    branches: [develop, 'feature/compact-lighting', 'feature/palette-benchmark', 'feature/parc1-facade', 'feature/night-lighting', 'feature/seoul-resource-pack', 'feature/landmark-shells', 'feature/expanded-landmarks', 'feature/boutique-inventory', 'feature/special-geometry']
+    branches: [develop, 'feature/compact-lighting', 'feature/palette-benchmark', 'feature/parc1-facade', 'feature/night-lighting', 'feature/seoul-resource-pack', 'feature/landmark-shells', 'feature/expanded-landmarks', 'feature/boutique-inventory', 'feature/special-geometry', 'feature/boutique-facades']
     paths:
       - 'src/**'
       - 'scripts/build_seoul_resource_pack.py'

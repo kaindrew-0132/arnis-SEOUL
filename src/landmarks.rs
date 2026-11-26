@@ -76,7 +76,7 @@ const LANDMARKS: &[Landmark] = &[
         anchor_z: 15.5,
         ground_y: 0,
         ground_offset: 0,
-        interior_marker: &[LIGHT_GRAY_CONCRETE],
+        interior_marker: &[crate::block_definitions::LIGHT_GRAY_CONCRETE],
         ground_overlap: 0,
         suppress_half_x: 5.0,
         suppress_half_z: 5.0,
