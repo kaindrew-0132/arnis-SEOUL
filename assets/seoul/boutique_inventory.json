@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "scope": "Apgujeong/Cheongdam street boutiques; open-ended, not a complete store census",
+  "reference_date": "2026-11-26",
+  "research_brands": [
+    {
+      "name": "Louis Vuitton",
+      "aliases": [
+        "Louis Vuitton",
+        "루이비통"
+      ]
+    },
+    {
+      "name": "Dior",
+      "aliases": [
+        "Dior",
+        "디올",
+        "Christian Dior"
+      ]
+    },
+    {
+      "name": "Chanel",
+      "aliases": [
+        "Chanel",
+        "샤넬"
+      ]
+    },
+    {
+      "name": "Cartier",
+      "aliases": [
+        "Cartier",
+        "까르띠에"
+      ]
+    },
+    {
+      "name": "Hermès",
+      "aliases": [
+        "Hermès",
+        "Hermes",
+        "에르메스"
+      ]
+    },
+    {
+      "name": "Gucci",
+      "aliases": [
+        "Gucci",
+        "구찌"
+      ]
+    },
+    {
+      "name": "Prada",
+      "aliases": [
+        "Prada",
+        "프라다"
+      ]
+    },
+    {
+      "name": "Miu Miu",
+      "aliases": [
+        "Miu Miu",
+        "미우미우"
+      ]
+    },
+    {
+      "name": "Fendi",
+      "aliases": [
+        "Fendi",
+        "펜디"
+      ]
+    },
+    {
+      "name": "Celine",
+      "aliases": [
+        "Celine",
+        "Céline",
+        "셀린느"
+      ]
+    },
+    {
+      "name": "Saint Laurent",
+      "aliases": [
+        "Saint Laurent",
+        "생로랑",
+        "YSL"
+      ]
+    },
+    {
+      "name": "Loro Piana",
+      "aliases": [
+        "Loro Piana",
+        "로로피아나"
+      ]
+    },
+    {
+      "name": "Bottega Veneta",
+      "aliases": [
+        "Bottega Veneta",
+        "보테가베네타"
+      ]
+    },
+    {
+      "name": "Loewe",
+      "aliases": [
+        "Loewe",
+        "로에베"
+      ]
+    },
+    {
+      "name": "Burberry",
+      "aliases": [
+        "Burberry",
+        "버버리"
+      ]
+    },
+    {
+      "name": "Balenciaga",
+      "aliases": [
+        "Balenciaga",
+        "발렌시아가"
+      ]
+    },
+    {
+      "name": "Brunello Cucinelli",
+      "aliases": [
+        "Brunello Cucinelli",
+        "브루넬로쿠치넬리"
+      ]
+    },
+    {
+      "name": "Zegna",
+      "aliases": [
+        "Zegna",
+        "제냐"
+      ]
+    },
+    {
+      "name": "Bulgari",
+      "aliases": [
+        "Bulgari",
+        "Bvlgari",
+        "불가리"
+      ]
+    },
+    {
+      "name": "Tiffany",
+      "aliases": [
+        "Tiffany",
+        "Tiffany & Co.",
+        "티파니"
+      ]
+    },
+    {
+      "name": "Van Cleef & Arpels",
+      "aliases": [
+        "Van Cleef & Arpels",
+        "Van Cleef",
+        "반클리프아펠"
+      ]
+    },
+    {
+      "name": "Chaumet",
+      "aliases": [
+        "Chaumet",
+        "쇼메"
+      ]
+    },
+    {
+      "name": "Graff",
+      "aliases": [
+        "Graff",
+        "그라프"
+      ]
+    },
+    {
+      "name": "Rolex",
+      "aliases": [
+        "Rolex",
+        "롤렉스"
+      ]
+    },
+    {
+      "name": "Patek Philippe",
+      "aliases": [
+        "Patek Philippe",
+        "파텍필립"
+      ]
+    },
+    {
+      "name": "Audemars Piguet",
+      "aliases": [
+        "Audemars Piguet",
+        "오데마피게"
+      ]
+    },
+    {
+      "name": "Vacheron Constantin",
+      "aliases": [
+        "Vacheron Constantin",
+        "바쉐론콘스탄틴"
+      ]
+    },
+    {
+      "name": "Richard Mille",
+      "aliases": [
+        "Richard Mille",
+        "리차드밀"
+      ]
+    },
+    {
+      "name": "Chrome Hearts",
+      "aliases": [
+        "Chrome Hearts",
+        "크롬하츠"
+      ]
+    },
+    {
+      "name": "Moncler",
+      "aliases": [
+        "Moncler",
+        "몽클레르"
+      ]
+    },
+    {
+      "name": "Goyard",
+      "aliases": [
+        "Goyard",
+        "고야드"
+      ]
+    },
+    {
+      "name": "Tom Ford",
+      "aliases": [
+        "Tom Ford",
+        "톰포드"
+      ]
+    }
+  ],
+  "sites": [
+    {
+      "id": "lv-maison-454",
+      "brand": "Louis Vuitton",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "454",
+      "status": "address_verified",
+      "source": "https://us.louisvuitton.com/eng-us/point-of-sale/korea/louis-vuitton-maison-seoul",
+      "architecture_source": "https://www.permasteelisagroup.com/project/louis-vuitton-maison-seoul/",
+      "geometry": "curved and angled glass sails; pale stone core; exact survey and orientation required",
+      "material_slots": [
+        "pale_stone",
+        "silver_metal",
+        "GLASS",
+        "LIGHT"
+      ],
+      "osm_identity": null
+    },
+    {
+      "id": "chanel-431",
+      "brand": "Chanel",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "431",
+      "status": "address_verified",
+      "source": "https://www.chanel.com/us/fashion/services/boutique-seoul-flagship/",
+      "architecture_source": "https://www.vmspace.com/eng/news/news_view.html?base_seq=NTI4",
+      "geometry": "black volcanic stone and reflective glazing; separate opaque walls from windows",
+      "material_slots": [
+        "black_stone",
+        "dark_glass",
+        "white_metal",
+        "LIGHT"
+      ],
+      "osm_identity": null
+    },
+    {
+      "id": "dior-464",
+      "brand": "Dior",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "464",
+      "status": "reference_date_review",
+      "source": "https://www.dior.com/fashion/stores/en_au/south-korea/seoul/464-apgujeong-ro",
+      "architecture_source": "https://visitgangnam.net/en/places/house-of-dior",
+      "geometry": "historic white curved shell facade; verify current building status and reference date before modeling",
+      "material_slots": [
+        "white_fabric",
+        "silver_metal",
+        "GLASS",
+        "LIGHT"
+      ],
+      "osm_identity": null
+    },
+    {
+      "id": "dior-467",
+      "brand": "Dior",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "number": "467",
+      "status": "reference_date_review",
+      "source": "https://www.dior.com/fashion/stores/en_int/south-korea/seoul/467-apgujeong-ro",
+      "architecture_source": null,
+      "geometry": "not verified; do not reuse 464 facade",
+      "material_slots": [],
+      "osm_identity": null
+    }
+  ]
+}
