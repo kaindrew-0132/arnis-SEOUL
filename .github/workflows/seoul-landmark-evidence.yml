@@ -1,0 +1,36 @@
+name: Seoul landmark and street evidence
+on:
+  push:
+    branches: ['feature/boutique-facades']
+    paths:
+      - 'assets/seoul/landmark_identity_candidates.json'
+      - 'scripts/review_seoul_landmark_ids.py'
+      - '.github/workflows/seoul-landmark-evidence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Retrieve bounded public OSM records
+        run: |
+          mkdir -p landmark-review
+          printf '%s\n' '© OpenStreetMap contributors, ODbL 1.0; https://www.openstreetmap.org/copyright' > landmark-review/ATTRIBUTION.txt
+          python3 scripts/review_seoul_landmark_ids.py landmark-review
+      - name: Review facade street orientation
+        run: |
+          if test -f landmark-review/boutique-street.json; then
+            node scripts/plan_seoul_boutique_placement.cjs landmark-review/boutique-street.json > landmark-review/boutique-placement.json
+            node -e 'const a=require("./landmark-review/boutique-placement.json"); for(const r of a.records)for(const c of r.candidates)console.log("FRONTAGE",JSON.stringify({site:r.site,way:c.way,evidence:c.evidence,edges:c.edge_candidates}))'
+          else
+            echo "No street extract; no frontage proposal"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: seoul-landmark-street-evidence
+          path: landmark-review/
+          if-no-files-found: warn

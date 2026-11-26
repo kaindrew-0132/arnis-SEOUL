@@ -1,0 +1,287 @@
+{
+  "version": 1,
+  "status": "review_only",
+  "districts": [
+    {
+      "key": "banpo",
+      "targets": [
+        "One Bailey",
+        "Acro River Park",
+        "One Pentas"
+      ]
+    },
+    {
+      "key": "seongsu",
+      "targets": [
+        "Trimage 101–104",
+        "Acro Seoul Forest 101–102",
+        "Galleria Foret"
+      ]
+    },
+    {
+      "key": "jamsil",
+      "targets": [
+        "Lotte World Tower",
+        "Lotte World Mall",
+        "Lotte World"
+      ]
+    },
+    {
+      "key": "yeouido",
+      "targets": [
+        "Parc.1",
+        "IFC",
+        "63 Building",
+        "FKI",
+        "LG Twin Towers"
+      ]
+    },
+    {
+      "key": "samseong",
+      "targets": [
+        "Parnas",
+        "Trade Tower",
+        "ASEM",
+        "COEX",
+        "Gangnam Finance Center",
+        "Centerfield"
+      ]
+    },
+    {
+      "key": "cheongdam",
+      "targets": [
+        "Luxury boutiques",
+        "Warner",
+        "Eterno",
+        "PH129"
+      ]
+    },
+    {
+      "key": "dogok",
+      "targets": [
+        "Tower Palace A–G"
+      ]
+    },
+    {
+      "key": "yongsan",
+      "targets": [
+        "Amorepacific HQ",
+        "Caelitus",
+        "Yongsan Station",
+        "Prugio Summit"
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "key": "parc1-1",
+      "type": "way",
+      "id": 874639189,
+      "district": "yeouido",
+      "aliases": [
+        "parc1tower1",
+        "parc1타워1",
+        "파크원타워1"
+      ],
+      "height_m_range": [
+        280,
+        350
+      ],
+      "source": "https://mapcarta.com/W874639189",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "parc1-2",
+      "type": "way",
+      "id": 874639190,
+      "district": "yeouido",
+      "aliases": [
+        "nhfinancialtowerparc1tower2",
+        "parc1tower2",
+        "파크원타워2",
+        "nh금융타워"
+      ],
+      "height_m_range": [
+        200,
+        300
+      ],
+      "source": "https://mapcarta.com/W874639190",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "ifc-1",
+      "type": "way",
+      "id": 621752526,
+      "district": "yeouido",
+      "aliases": [
+        "oneifc",
+        "oneinternationalfinancecentre",
+        "oneinternationalfinancecenter",
+        "ifc1"
+      ],
+      "height_m_range": [
+        140,
+        205
+      ],
+      "source": "https://mapcarta.com/W621752526",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "ifc-2",
+      "type": "way",
+      "id": 621752527,
+      "district": "yeouido",
+      "aliases": [
+        "twoifc",
+        "twointernationalfinancecentre",
+        "twointernationalfinancecenter",
+        "ifc2"
+      ],
+      "height_m_range": [
+        140,
+        200
+      ],
+      "source": "https://mapcarta.com/W621752527",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "ifc-3",
+      "type": "way",
+      "id": 621752528,
+      "district": "yeouido",
+      "aliases": [
+        "threeifc",
+        "threeinternationalfinancecentre",
+        "threeinternationalfinancecenter",
+        "ifc3"
+      ],
+      "height_m_range": [
+        240,
+        310
+      ],
+      "source": "https://mapcarta.com/W621752528",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "galleria-unnumbered-a",
+      "type": "way",
+      "id": 473812530,
+      "district": "seongsu",
+      "aliases": [
+        "hanwhagalleriaforettower",
+        "galleriaforet",
+        "갤러리아포레"
+      ],
+      "height_m_range": [
+        130,
+        240
+      ],
+      "source": "https://mapcarta.com/W473812530",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "galleria-unnumbered-b",
+      "type": "way",
+      "id": 473812532,
+      "district": "seongsu",
+      "aliases": [
+        "hanwhagalleriaforettower",
+        "galleriaforet",
+        "갤러리아포레"
+      ],
+      "height_m_range": [
+        130,
+        240
+      ],
+      "source": "https://mapcarta.com/W473812532",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "amore-hq",
+      "type": "way",
+      "id": 363982568,
+      "district": "yongsan",
+      "aliases": [
+        "amorepacific",
+        "amorepacificheadquarters",
+        "아모레퍼시픽본사",
+        "아모레퍼시픽"
+      ],
+      "height_m_range": [
+        80,
+        130
+      ],
+      "source": "https://mapcarta.com/W363982568",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "trade",
+      "type": "way",
+      "id": 74056379,
+      "district": "samseong",
+      "aliases": [
+        "tradetower",
+        "트레이드타워",
+        "무역센터트레이드타워"
+      ],
+      "height_m_range": [
+        180,
+        250
+      ],
+      "source": "https://mapcarta.com/W74056379",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "parnas",
+      "type": "way",
+      "id": 837196098,
+      "district": "samseong",
+      "aliases": [
+        "parnastower",
+        "파르나스타워"
+      ],
+      "height_m_range": [
+        140,
+        210
+      ],
+      "source": "https://mapcarta.com/W837196098",
+      "status": "third_party_candidate_only"
+    },
+    {
+      "key": "lotte-world-tower",
+      "type": "relation",
+      "id": 8824257,
+      "district": "jamsil",
+      "aliases": [
+        "lotteworldtower",
+        "롯데월드타워"
+      ],
+      "height_m_range": [
+        540,
+        570
+      ],
+      "source": "https://www.wikidata.org/wiki/Q494895",
+      "status": "relation_review_only"
+    }
+  ],
+  "local_review_boxes": [
+    {
+      "key": "trimage",
+      "center": [
+        37.5393306,
+        127.0451583
+      ],
+      "half_span_deg": 0.0015,
+      "source": "https://ko.wikipedia.org/wiki/트리마제"
+    },
+    {
+      "key": "lotte",
+      "center": [
+        37.51255,
+        127.10268
+      ],
+      "half_span_deg": 0.001,
+      "source": "https://mapcarta.com/N12520558001"
+    }
+  ]
+}
