@@ -3327,6 +3327,26 @@ struct BuildingConfig {
     rail_hall: bool,
     /// Simplified red structural frame of the two mapped Parc.1 office towers.
     seoul_parc1: bool,
+    seoul_landmark: Option<SeoulLandmark>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SeoulLandmark {
+    Trimage,
+    LotteWorldTower,
+    Building63,
+    OneBailey,
+}
+
+impl SeoulLandmark {
+    fn materials(self) -> (Block, Block) {
+        match self {
+            Self::Trimage => (LIGHT_BLUE_STAINED_GLASS, WHITE_CONCRETE),
+            Self::LotteWorldTower => (LIGHT_GRAY_STAINED_GLASS, WHITE_CONCRETE),
+            Self::Building63 => (YELLOW_STAINED_GLASS, BROWN_CONCRETE),
+            Self::OneBailey => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
+        }
+    }
 }
 
 /// Base, shaft and capital of a masonry tower: a stone base of one to four
@@ -6158,6 +6178,59 @@ fn compute_detail_tier(
     } else {
         DetailTier::Landmark
     }
+}
+
+/// Match explicitly named mapped tower elements, not neighbouring buildings,
+/// a complex relation, or a guessed OSM ID. Map anchor is only a coarse guard.
+fn seoul_landmark(
+    anchor: (f64, f64),
+    tags: &HashMap<String, String>,
+    height_m: f64,
+) -> Option<SeoulLandmark> {
+    let (lat, lon) = anchor;
+    if !(37.40..=37.72).contains(&lat)
+        || !(126.75..=127.20).contains(&lon)
+        || !height_m.is_finite()
+        || tags.contains_key("building:part")
+        || is_sloped_glass_facade(tags)
+    {
+        return None;
+    }
+    for key in ["name", "name:ko", "name:en"] {
+        let Some(raw) = tags.get(key) else { continue };
+        let name = raw.to_lowercase().replace([' ', '.', '-'], "");
+        if (100.0..=210.0).contains(&height_m) {
+            for tower in 101..=104 {
+                if ["트리마제", "서울숲트리마제", "trimage", "seoulforesttrimage"]
+                    .iter()
+                    .any(|prefix| name == format!("{prefix}{tower}") || name == format!("{prefix}{tower}동"))
+                {
+                    return Some(SeoulLandmark::Trimage);
+                }
+            }
+        }
+        if (400.0..=600.0).contains(&height_m)
+            && matches!(name.as_str(), "롯데월드타워" | "lotteworldtower")
+        {
+            return Some(SeoulLandmark::LotteWorldTower);
+        }
+        if (180.0..=300.0).contains(&height_m)
+            && matches!(name.as_str(), "63빌딩" | "63building" | "63스퀘어" | "63square")
+        {
+            return Some(SeoulLandmark::Building63);
+        }
+        if (50.0..=160.0).contains(&height_m) {
+            for prefix in ["래미안원베일리", "원베일리", "raemianonebailey", "onebailey"] {
+                if let Some(suffix) = name.strip_prefix(prefix) {
+                    let suffix = suffix.strip_suffix('동').unwrap_or(suffix);
+                    if suffix.len() == 3 && suffix.bytes().all(|b| b.is_ascii_digit()) {
+                        return Some(SeoulLandmark::OneBailey);
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Only the two high-rise office towers, never the department store or hotel.
@@ -10649,7 +10722,7 @@ fn weathered_variants(block: Block) -> &'static [Block] {
 
 /// Glass a tower can be walled in, so a corner can tell it apart from stone.
 fn is_glass_wall(block: Block) -> bool {
-    const GLASS_WALLS: [Block; 9] = [
+    const GLASS_WALLS: [Block; 10] = [
         GLASS,
         WHITE_STAINED_GLASS,
         GRAY_STAINED_GLASS,
@@ -10659,6 +10732,7 @@ fn is_glass_wall(block: Block) -> bool {
         CYAN_STAINED_GLASS,
         BLUE_STAINED_GLASS,
         LIGHT_BLUE_STAINED_GLASS,
+        YELLOW_STAINED_GLASS,
     ];
     GLASS_WALLS.contains(&block)
 }
@@ -11046,6 +11120,19 @@ fn determine_wall_block_at_position_pristine(
             LIGHT_GRAY_CONCRETE
         } else {
             config.window_block
+        };
+    }
+    if let Some(landmark) = config.seoul_landmark {
+        let (glass, frame) = landmark.materials();
+        if col.party {
+            return frame;
+        }
+        let band = config.floor_row(h) == 0 && h > config.ground_floor_top();
+        return match landmark {
+            SeoulLandmark::Trimage => if band || col.corner { frame } else { glass },
+            SeoulLandmark::OneBailey => if col.corner { frame } else if band { GRAY_CONCRETE } else { glass },
+            SeoulLandmark::LotteWorldTower => if col.corner { frame } else { glass },
+            SeoulLandmark::Building63 => glass,
         };
     }
     let block = unzoned_wall_block(h, config, col);
@@ -15835,6 +15922,7 @@ pub fn generate_buildings(
         preset_shell: Arc::default(),
         passage_height,
         seoul_parc1: false,
+        seoul_landmark: None,
         rail_hall: min_level_offset == 0
             && rail == RailThrough::Into
             && (rail_hall_type(building_type)
@@ -15877,7 +15965,25 @@ pub fn generate_buildings(
     } else {
         config
     };
-    let compact_facade = !parc1 && !args.interior
+    let landmark = if !args.interior && !parc1 && config.condition == BuildingCondition::Normal {
+        seoul_landmark(editor.geo_anchor(), &element.tags, f64::from(building_height) / scale_factor)
+    } else {
+        None
+    };
+    let config = if let Some(profile) = landmark {
+        let mut config = compact_facade_config(config);
+        let (glass, frame) = profile.materials();
+        config.seoul_landmark = Some(profile);
+        config.wall_block = glass;
+        config.window_block = glass;
+        config.accent_block = frame;
+        config.floor_block = SMOOTH_STONE;
+        config.shell_glass = ShellGlass::Plain;
+        config
+    } else {
+        config
+    };
+    let compact_facade = !parc1 && landmark.is_none() && !args.interior
         && config.condition == BuildingCondition::Normal
         && seoul_compact_facade(
             editor.geo_anchor(),
@@ -15927,7 +16033,7 @@ pub fn generate_buildings(
         element,
         &config,
         style.roof_type,
-        style.generate_roof && invented_massing,
+        style.generate_roof && invented_massing && landmark.is_none(),
         cached_footprint_size,
         &cached_floor_area,
         group_seed,
@@ -15946,7 +16052,7 @@ pub fn generate_buildings(
             element,
             &config,
             style.roof_type,
-            style.generate_roof && invented_massing,
+            style.generate_roof && invented_massing && landmark.is_none(),
             &cached_floor_area,
             &roof_ctx,
         )
@@ -16181,7 +16287,7 @@ pub fn generate_buildings(
         facade: outline_facade.as_ref(),
         strip: &eave_strip,
     });
-    if !compact_facade && !parc1 {
+    if !compact_facade && !parc1 && landmark.is_none() {
         generate_window_frames(
             editor,
             element,
@@ -16212,7 +16318,7 @@ pub fn generate_buildings(
             stepped_outline.as_ref(),
         );
     }
-    if !compact_facade && !parc1 {
+    if !compact_facade && !parc1 && landmark.is_none() {
         generate_window_life(
             editor,
             element,
@@ -24374,6 +24480,7 @@ mod style_tests {
             passage_height: BUILDING_PASSAGE_HEIGHT,
             rail_hall: false,
             seoul_parc1: false,
+        seoul_landmark: None,
         }
     }
 
@@ -25774,6 +25881,39 @@ mod style_tests {
             compute_detail_tier(&notable, BuildingCategory::Historic, 600, 20, true),
             DetailTier::Landmark
         );
+    }
+
+    #[test]
+    fn seoul_named_landmark_match_is_conservative() {
+        let seoul = (37.54, 127.04);
+        let mut tags = HashMap::new();
+        for tower in 101..=104 {
+            tags.insert("name".into(), format!("서울숲 트리마제 {tower}동"));
+            assert_eq!(seoul_landmark(seoul, &tags, 160.0), Some(SeoulLandmark::Trimage));
+        }
+        assert_eq!(seoul_landmark(seoul, &tags, 30.0), None);
+        assert_eq!(seoul_landmark((40.7, -74.0), &tags, 160.0), None);
+        tags.insert("name".into(), "트리마제".into());
+        assert_eq!(seoul_landmark(seoul, &tags, 160.0), None);
+        tags.insert("name".into(), "롯데월드타워".into());
+        assert_eq!(seoul_landmark(seoul, &tags, 555.0), Some(SeoulLandmark::LotteWorldTower));
+        tags.insert("name".into(), "63 Building".into());
+        assert_eq!(seoul_landmark(seoul, &tags, 249.0), Some(SeoulLandmark::Building63));
+        tags.insert("name".into(), "래미안 원베일리 101동".into());
+        assert_eq!(seoul_landmark(seoul, &tags, 110.0), Some(SeoulLandmark::OneBailey));
+        tags.insert("building:part".into(), "yes".into());
+        assert_eq!(seoul_landmark(seoul, &tags, 110.0), None);
+    }
+
+    #[test]
+    fn trimage_shell_retains_vision_glass_between_white_floor_bands() {
+        let mut config = test_config(160, false, false);
+        config.seoul_landmark = Some(SeoulLandmark::Trimage);
+        let plain = ColumnFacade::default();
+        let h = config.start_y_offset + config.grammar_anchor() + 3 * config.floor_cycle;
+        assert_eq!(determine_wall_block_at_position_pristine(h, &config, plain), WHITE_CONCRETE);
+        assert_eq!(determine_wall_block_at_position_pristine(h+1, &config, plain), LIGHT_BLUE_STAINED_GLASS);
+        assert!(is_glass_wall(YELLOW_STAINED_GLASS));
     }
 
     #[test]
