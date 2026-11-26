@@ -386,6 +386,111 @@
       "material_slots": [],
       "osm_identity": null,
       "occupancy": "temporary"
+    },
+    {
+      "id": "gucci-462",
+      "brand": "Gucci",
+      "number": "462",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "source": "https://www.gucci.com/kr/ko/store/9915-chungdamdong-gangnamgu",
+      "architecture_source": "https://www.gucci.com/kr/ko/st/stories/article/cheongdam-flagship-reopening",
+      "geometry": "Vertical garden facade described by brand; reference-date and placement of planting modules need review",
+      "material_slots": [
+        "charcoal_panel",
+        "GLASS",
+        "LIGHT"
+      ],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "celine-466",
+      "brand": "Celine",
+      "number": "466",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "source": "https://stores.celine.com/ko_kr/seoul/466-apgujeong-ro-gangnam-gu",
+      "architecture_source": "https://luxury.designhouse.co.kr/magazineView/676fb9e0f9f7ab4deb59e244",
+      "geometry": "New 2024 facade with two glass treatments; do not reuse 2017 brick facade",
+      "material_slots": [
+        "silver_glass",
+        "smoke_glass",
+        "silver_metal",
+        "LIGHT"
+      ],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "loewe-446",
+      "brand": "Loewe",
+      "number": "446",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "source": "https://www.loewe.com/apc/en/storedetail?StoreCity=SEOUL&StoreID=KR1182030&StoreName=SEOUL+-+CASA+CHEONGDAM",
+      "architecture_source": "https://www.lvmh.com/en/news-lvmh/loewe-opens-first-casa-loewe-store-in-seoul",
+      "geometry": "Bright green ceramic monolith, ground-floor openings; exact bay placement unverified",
+      "material_slots": [
+        "GLASS",
+        "LIGHT"
+      ],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "burberry-dosan-459",
+      "brand": "Burberry",
+      "number": "459",
+      "street": "도산대로",
+      "street_en": "Dosan-daero",
+      "source": "https://stores.burberry.com/ko/kr/seoul/459-dosandae-ro",
+      "architecture_source": "https://www.guardianglass.com/ap/en/projects/project-details/burberry-asia-flagship-store",
+      "geometry": "Glazed plaid-like metal screen; retail occupancy not assumed to equal 12-storey envelope",
+      "material_slots": [
+        "silver_glass",
+        "silver_metal",
+        "charcoal_panel",
+        "LIGHT"
+      ],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "loro-piana-448",
+      "brand": "Loro Piana",
+      "number": "448",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "source": "https://kr.loropiana.com/ko/stores-south-korea-south-korea-seoul",
+      "architecture_source": null,
+      "geometry": "Address verified; facade details not verified",
+      "material_slots": [],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
+    },
+    {
+      "id": "vc-430",
+      "brand": "Vacheron Constantin",
+      "number": "430",
+      "street": "압구정로",
+      "street_en": "Apgujeong-ro",
+      "source": "https://stores.vacheron-constantin.com/ko/south-korea/seoul/430-apgujeong-ro",
+      "architecture_source": "https://www.vacheron-constantin.com/kr/en/maison/boutiques/maison-1755-seoul.html",
+      "geometry": "Geometric brass facade inspired by Maltese cross; exact screen pattern not surveyed",
+      "material_slots": [
+        "bronze_frame",
+        "GLASS",
+        "LIGHT"
+      ],
+      "status": "address_verified",
+      "osm_identity": null,
+      "occupancy": "review_required"
     }
   ]
 }

@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "status": "unplaced_preview",
+  "profiles": [
+    {
+      "id": "lv-maison-454",
+      "style": "sails",
+      "width": 19,
+      "height": 16,
+      "base": "smooth_quartz",
+      "glass": "glass",
+      "frame": "light_gray_concrete",
+      "source": "https://www.permasteelisagroup.com/project/louis-vuitton-maison-seoul/"
+    },
+    {
+      "id": "chanel-431",
+      "style": "stone",
+      "width": 17,
+      "height": 16,
+      "base": "polished_blackstone",
+      "glass": "black_stained_glass",
+      "frame": "white_concrete",
+      "source": "https://visitgangnam.net/en/places/chanel-seoul-flagship"
+    },
+    {
+      "id": "vca-441",
+      "style": "openwork",
+      "width": 17,
+      "height": 15,
+      "base": "smooth_quartz",
+      "glass": "light_gray_stained_glass",
+      "frame": "brown_concrete",
+      "source": "https://www.vancleefarpels.com/kr/en/events/maison-seoul-opening.html"
+    },
+    {
+      "id": "gucci-462",
+      "style": "garden",
+      "width": 19,
+      "height": 16,
+      "base": "gray_concrete",
+      "glass": "glass",
+      "frame": "light_gray_concrete",
+      "source": "https://www.gucci.com/kr/ko/st/stories/article/cheongdam-flagship-reopening"
+    },
+    {
+      "id": "celine-466",
+      "style": "two_glass",
+      "width": 19,
+      "height": 16,
+      "base": "gray_concrete",
+      "glass": "light_gray_stained_glass",
+      "frame": "light_gray_concrete",
+      "source": "https://luxury.designhouse.co.kr/magazineView/676fb9e0f9f7ab4deb59e244"
+    },
+    {
+      "id": "loewe-446",
+      "style": "ceramic",
+      "width": 15,
+      "height": 13,
+      "base": "dark_prismarine",
+      "glass": "glass",
+      "frame": "dark_prismarine",
+      "source": "https://www.lvmh.com/en/news-lvmh/loewe-opens-first-casa-loewe-store-in-seoul"
+    },
+    {
+      "id": "burberry-dosan-459",
+      "style": "plaid",
+      "width": 21,
+      "height": 16,
+      "base": "light_gray_concrete",
+      "glass": "light_gray_stained_glass",
+      "frame": "gray_concrete",
+      "source": "https://www.guardianglass.com/ap/en/projects/project-details/burberry-asia-flagship-store"
+    },
+    {
+      "id": "vc-430",
+      "style": "brass",
+      "width": 15,
+      "height": 14,
+      "base": "brown_concrete",
+      "glass": "glass",
+      "frame": "brown_concrete",
+      "source": "https://stores.vacheron-constantin.com/ko/south-korea/seoul/430-apgujeong-ro"
+    }
+  ]
+}

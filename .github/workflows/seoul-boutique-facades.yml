@@ -1,0 +1,24 @@
+name: Seoul boutique facades
+on:
+  push:
+    branches: ['feature/boutique-facades']
+    paths:
+      - 'assets/seoul/**'
+      - 'scripts/*seoul_boutiques.cjs'
+      - '.github/workflows/seoul-boutique-facades.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: node scripts/review_seoul_boutiques.cjs --self-test
+      - run: node scripts/associate_seoul_boutiques.cjs --self-test
+      - run: node scripts/build_seoul_boutiques.cjs boutique-dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: seoul-boutique-facade-previews
+          path: boutique-dist/
+          if-no-files-found: error
