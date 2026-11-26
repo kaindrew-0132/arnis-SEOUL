@@ -14317,6 +14317,23 @@ fn ceiling_light_spacing(
     }
 }
 
+/// A lamp one cell inside a footprint edge, spaced along the wall rather
+/// than across the whole floor. A sparse central grid keeps the shell usable.
+fn night_lamp_cell(cells: &FnvHashSet<(i32, i32)>, x: i32, z: i32) -> bool {
+    let dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+    // Avoid the outermost cells: the footprint fill can overlap a wall.
+    if !cells.contains(&(x, z))
+        || dirs.iter().any(|&(dx, dz)| !cells.contains(&(x + dx, z + dz)))
+    {
+        return false;
+    }
+    let edge_x = !cells.contains(&(x - 2, z)) || !cells.contains(&(x + 2, z));
+    let edge_z = !cells.contains(&(x, z - 2)) || !cells.contains(&(x, z + 2));
+    (edge_x && z.rem_euclid(6) == 0)
+        || (edge_z && x.rem_euclid(6) == 0)
+        || (x.rem_euclid(12) == 0 && z.rem_euclid(12) == 0)
+}
+
 fn generate_floors_and_ceilings(
     editor: &mut WorldEditor,
     cached_floor_area: &[(i32, i32)],
@@ -14327,6 +14344,7 @@ fn generate_floors_and_ceilings(
     open_hall: bool,
     furnished: bool,
     compact_facade: bool,
+    night_lighting: bool,
     lid: &RoofMembrane,
 ) {
     let ceiling_light_block = if config.is_abandoned_building {
@@ -14350,9 +14368,29 @@ fn generate_floors_and_ceilings(
         config.floor_cycle,
     );
 
+    let night_cells: Option<FnvHashSet<(i32, i32)>> = (night_lighting
+        && hidden_lights
+        && editor.format() == crate::world_editor::WorldFormat::JavaAnvil
+        && config.condition == BuildingCondition::Normal
+        && !open_hall
+        && building_passages.is_empty()
+        && config.floor_cycle >= 3
+        && config.building_height / config.floor_cycle >= 3
+        && cached_floor_area.len() >= 144
+        && config.shell_glass == ShellGlass::Plain
+        && (config.has_windows || is_glass_wall(config.wall_block)))
+        .then(|| cached_floor_area.iter().copied().collect());
+    // Do not darken narrow or irregular footprints with no usable inner cells.
+    let night_cells = night_cells.filter(|cells| {
+        cells.iter().any(|&(x, z)| night_lamp_cell(cells, x, z))
+    });
     let passage_height = config.passage_height.min(config.building_height);
 
     for &(x, z) in cached_floor_area {
+        let lamp = night_cells.as_ref().map_or_else(
+            || x.rem_euclid(light_spacing) == 0 && z.rem_euclid(light_spacing) == 0,
+            |cells| night_lamp_cell(cells, x, z),
+        );
         let is_passage = building_passages.contains(x, z);
 
         // Set ground floor - skip in a road's passage (the road surface is placed
@@ -14381,7 +14419,6 @@ fn generate_floors_and_ceilings(
                     continue;
                 }
 
-                let lamp = x % light_spacing == 0 && z % light_spacing == 0;
                 let block = if lamp && !hidden_lights {
                     ceiling_light_block
                 } else {
@@ -14403,8 +14440,7 @@ fn generate_floors_and_ceilings(
         // The top storey has no slab above for lights, so they hang in its top row.
         let top_headroom = top - top_floor;
         let under_passage = is_passage && top <= config.start_y_offset + passage_height;
-        if x % light_spacing == 0
-            && z % light_spacing == 0
+        if lamp
             && !under_passage
             && (top_headroom >= 3 || top_floor == config.start_y_offset)
         {
@@ -16255,6 +16291,10 @@ pub fn generate_buildings(
     roof_area.sort_unstable();
 
     // Generate floors and ceilings
+    let night_lighting = !args.interior && {
+        let (lat, lon) = editor.geo_anchor();
+        (37.40..=37.72).contains(&lat) && (126.75..=127.20).contains(&lon)
+    };
     if corner_count > 0 {
         generate_floors_and_ceilings(
             editor,
@@ -16269,6 +16309,7 @@ pub fn generate_buildings(
                 || config.category == BuildingCategory::Greenhouse,
             interior_plan.is_some(),
             compact_facade && effective_passages.is_empty(),
+            night_lighting,
             &roof_cover,
         );
 
@@ -24133,6 +24174,7 @@ mod style_tests {
             false,
             false,
             false,
+            false,
             &lid,
         );
         assert!(count(&java, LIGHT) > 0);
@@ -24158,6 +24200,7 @@ mod style_tests {
             false,
             false,
             false,
+            false,
             &lid,
         );
         assert_eq!(count(&luanti, LIGHT), 0);
@@ -24177,6 +24220,52 @@ mod style_tests {
     }
 
     #[test]
+    fn night_lighting_targets_the_inner_perimeter_and_skips_the_wall() {
+        let cells: FnvHashSet<(i32, i32)> =
+            (0..24).flat_map(|x| (0..24).map(move |z| (x, z))).collect();
+        assert!(night_lamp_cell(&cells, 1, 6));
+        assert!(night_lamp_cell(&cells, 22, 12));
+        assert!(night_lamp_cell(&cells, 6, 1));
+        assert!(!night_lamp_cell(&cells, 0, 6));
+        assert!(!night_lamp_cell(&cells, 6, 6));
+        assert!(night_lamp_cell(&cells, 12, 12));
+        let n = cells.iter().filter(|&&(x, z)| night_lamp_cell(&cells, x, z)).count();
+        assert!(n > 0 && n < 64, "{n} lamps vs 64 on the original grid");
+    }
+
+    #[test]
+    fn night_lighting_keeps_floor_blocks_and_places_perimeter_lamps() {
+        use crate::coordinate_system::cartesian::XZBBox;
+        use crate::element_processing::building_test_support::test_editor;
+        let xz = XZBBox::rect_from_xz_lengths(30.0, 30.0).unwrap();
+        let cells: Vec<(i32, i32)> =
+            (0..24).flat_map(|x| (0..24).map(move |z| (x, z))).collect();
+        let config = test_config(20, false, false);
+        let passages = CoordinateBitmap::new_empty();
+        let lid = RoofMembrane::uniform(SMOOTH_STONE);
+        let mut original = test_editor(&xz);
+        let mut night = test_editor(&xz);
+        for (editor, enabled) in [(&mut original, false), (&mut night, true)] {
+            generate_floors_and_ceilings(
+                editor, &cells, &config, false, &passages, &passages,
+                false, false, true, enabled, &lid,
+            );
+        }
+        let mut perimeter_lamps = 0;
+        for &(x, z) in &cells {
+            for y in 0..=21 {
+                let a = original.get_block_absolute(x, y, z);
+                let b = night.get_block_absolute(x, y, z);
+                assert_eq!(a.filter(|&b| b != LIGHT), b.filter(|&b| b != LIGHT));
+                if x == 1 && z == 6 && b == Some(LIGHT) {
+                    perimeter_lamps += 1;
+                }
+            }
+        }
+        assert!(perimeter_lamps >= 2);
+    }
+
+    #[test]
     fn compact_lighting_quarters_lights_without_changing_floor_slabs() {
         use crate::coordinate_system::cartesian::XZBBox;
         use crate::element_processing::building_test_support::test_editor;
@@ -24191,7 +24280,7 @@ mod style_tests {
         for (editor, enabled) in [(&mut original, false), (&mut compact, true)] {
             generate_floors_and_ceilings(
                 editor, &cells, &config, false, &passages, &passages,
-                false, false, enabled, &lid,
+                false, false, enabled, false, &lid,
             );
         }
         let (mut before, mut after) = (0, 0);

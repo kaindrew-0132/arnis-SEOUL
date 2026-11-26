@@ -2,7 +2,7 @@ name: Seoul Windows baseline
 
 on:
   push:
-    branches: [develop, 'feature/compact-lighting', 'feature/palette-benchmark', 'feature/parc1-facade']
+    branches: [develop, 'feature/compact-lighting', 'feature/palette-benchmark', 'feature/parc1-facade', 'feature/night-lighting']
     paths:
       - 'src/**'
       - 'Cargo.toml'
