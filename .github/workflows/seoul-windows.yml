@@ -2,9 +2,10 @@ name: Seoul Windows baseline
 
 on:
   push:
-    branches: [develop, 'feature/compact-lighting', 'feature/palette-benchmark', 'feature/parc1-facade', 'feature/night-lighting']
+    branches: [develop, 'feature/compact-lighting', 'feature/palette-benchmark', 'feature/parc1-facade', 'feature/night-lighting', 'feature/seoul-resource-pack']
     paths:
       - 'src/**'
+      - 'scripts/build_seoul_resource_pack.py'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'tauri.conf.json'
@@ -28,6 +29,13 @@ jobs:
       - uses: ./.github/actions/setup-arnis-linux
         with:
           rust-targets: x86_64-pc-windows-msvc
+      - name: Build and verify Seoul resource packs
+        run: python scripts/build_seoul_resource_pack.py pack-dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arnis-seoul-resource-packs
+          path: pack-dist/
+          if-no-files-found: error
       - name: Test
         run: cargo test --locked --target x86_64-pc-windows-msvc
       - name: Build unsigned executable

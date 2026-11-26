@@ -11042,6 +11042,8 @@ fn determine_wall_block_at_position_pristine(
         let band = row >= cycle * 12 && row.rem_euclid(cycle * 12) < 2;
         return if col.corner || band {
             RED_CONCRETE
+        } else if row >= cycle && row.rem_euclid(cycle) == 0 {
+            LIGHT_GRAY_CONCRETE
         } else {
             config.window_block
         };
@@ -25799,6 +25801,10 @@ mod style_tests {
         assert_eq!(determine_wall_block_at_position_pristine(h, &config, plain), RED_CONCRETE);
         assert_eq!(determine_wall_block_at_position_pristine(h + 2, &config, plain), LIGHT_BLUE_STAINED_GLASS);
         assert_eq!(determine_wall_block_at_position_pristine(h + 2, &config, corner), RED_CONCRETE);
+        assert_eq!(
+            determine_wall_block_at_position_pristine(h + config.floor_cycle, &config, plain),
+            LIGHT_GRAY_CONCRETE
+        );
     }
 
     #[test]
