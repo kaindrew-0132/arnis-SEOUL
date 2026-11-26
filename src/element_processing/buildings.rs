@@ -14246,6 +14246,32 @@ fn generate_hospital_helipad(
 
 /// Generates floors and ceilings for the building interior
 #[allow(clippy::too_many_arguments)]
+/// Six-block spacing cuts the light grid density to one quarter in large,
+/// empty, ordinary Seoul buildings. Keep the original grid for small rooms,
+/// halls, furnished buildings, protected landmarks and non-Java formats.
+fn ceiling_light_spacing(
+    compact_facade: bool,
+    hidden_lights: bool,
+    java: bool,
+    open_hall: bool,
+    footprint: usize,
+    height: i32,
+    floor_cycle: i32,
+) -> i32 {
+    if compact_facade
+        && hidden_lights
+        && java
+        && !open_hall
+        && footprint >= 144
+        && floor_cycle >= 3
+        && height / floor_cycle >= 2
+    {
+        6
+    } else {
+        3
+    }
+}
+
 fn generate_floors_and_ceilings(
     editor: &mut WorldEditor,
     cached_floor_area: &[(i32, i32)],
@@ -14255,6 +14281,7 @@ fn generate_floors_and_ceilings(
     rail_cells: &CoordinateBitmap,
     open_hall: bool,
     furnished: bool,
+    compact_facade: bool,
     lid: &RoofMembrane,
 ) {
     let ceiling_light_block = if config.is_abandoned_building {
@@ -14268,6 +14295,15 @@ fn generate_floors_and_ceilings(
     // invisible light block, so there the lamps stay flush in the ceiling.
     let hidden_lights =
         !furnished && !config.is_abandoned_building && !editor.format().is_sandbox();
+    let light_spacing = ceiling_light_spacing(
+        compact_facade,
+        hidden_lights,
+        editor.format() == crate::world_editor::WorldFormat::JavaAnvil,
+        open_hall,
+        cached_floor_area.len(),
+        config.building_height,
+        config.floor_cycle,
+    );
 
     let passage_height = config.passage_height.min(config.building_height);
 
@@ -14300,7 +14336,7 @@ fn generate_floors_and_ceilings(
                     continue;
                 }
 
-                let lamp = x % 3 == 0 && z % 3 == 0;
+                let lamp = x % light_spacing == 0 && z % light_spacing == 0;
                 let block = if lamp && !hidden_lights {
                     ceiling_light_block
                 } else {
@@ -14322,8 +14358,8 @@ fn generate_floors_and_ceilings(
         // The top storey has no slab above for lights, so they hang in its top row.
         let top_headroom = top - top_floor;
         let under_passage = is_passage && top <= config.start_y_offset + passage_height;
-        if x % 3 == 0
-            && z % 3 == 0
+        if x % light_spacing == 0
+            && z % light_spacing == 0
             && !under_passage
             && (top_headroom >= 3 || top_floor == config.start_y_offset)
         {
@@ -16166,6 +16202,7 @@ pub fn generate_buildings(
                 || config.shell_glass == ShellGlass::Hall
                 || config.category == BuildingCategory::Greenhouse,
             interior_plan.is_some(),
+            compact_facade && effective_passages.is_empty(),
             &roof_cover,
         );
 
@@ -24029,6 +24066,7 @@ mod style_tests {
             &CoordinateBitmap::new_empty(),
             false,
             false,
+            false,
             &lid,
         );
         assert!(count(&java, LIGHT) > 0);
@@ -24053,10 +24091,61 @@ mod style_tests {
             &CoordinateBitmap::new_empty(),
             false,
             false,
+            false,
             &lid,
         );
         assert_eq!(count(&luanti, LIGHT), 0);
         assert!(count(&luanti, GLOWSTONE) > 0);
+    }
+
+    #[test]
+    fn compact_lighting_keeps_small_and_special_buildings_on_original_grid() {
+        assert_eq!(ceiling_light_spacing(true, true, true, false, 144, 16, 4), 6);
+        assert_eq!(ceiling_light_spacing(false, true, true, false, 144, 16, 4), 3);
+        assert_eq!(ceiling_light_spacing(true, false, true, false, 144, 16, 4), 3);
+        assert_eq!(ceiling_light_spacing(true, true, false, false, 144, 16, 4), 3);
+        assert_eq!(ceiling_light_spacing(true, true, true, true, 144, 16, 4), 3);
+        assert_eq!(ceiling_light_spacing(true, true, true, false, 143, 16, 4), 3);
+        assert_eq!(ceiling_light_spacing(true, true, true, false, 144, 4, 4), 3);
+        assert_eq!(ceiling_light_spacing(true, true, true, false, 144, 16, 0), 3);
+    }
+
+    #[test]
+    fn compact_lighting_quarters_lights_without_changing_floor_slabs() {
+        use crate::coordinate_system::cartesian::XZBBox;
+        use crate::element_processing::building_test_support::test_editor;
+        let xz = XZBBox::rect_from_xz_lengths(24.0, 24.0).unwrap();
+        let cells: Vec<(i32, i32)> =
+            (0..12).flat_map(|x| (0..12).map(move |z| (x, z))).collect();
+        let config = test_config(16, false, false);
+        let passages = CoordinateBitmap::new_empty();
+        let lid = RoofMembrane::uniform(SMOOTH_STONE);
+        let mut original = test_editor(&xz);
+        let mut compact = test_editor(&xz);
+        for (editor, enabled) in [(&mut original, false), (&mut compact, true)] {
+            generate_floors_and_ceilings(
+                editor, &cells, &config, false, &passages, &passages,
+                false, false, enabled, &lid,
+            );
+        }
+        let (mut before, mut after) = (0, 0);
+        for &(x, z) in &cells {
+            for y in 0..=17 {
+                let a = original.get_block_absolute(x, y, z);
+                let b = compact.get_block_absolute(x, y, z);
+                if a == Some(LIGHT) {
+                    before += 1;
+                    assert!(b.is_none() || b == Some(LIGHT));
+                } else {
+                    assert_eq!(a, b, "non-light block changed at {x},{y},{z}");
+                }
+                if b == Some(LIGHT) {
+                    after += 1;
+                }
+            }
+        }
+        assert!(before > 0 && after > 0);
+        assert_eq!(before, after * 4);
     }
 
     fn test_config(height: i32, attic: bool, top: bool) -> BuildingConfig {
