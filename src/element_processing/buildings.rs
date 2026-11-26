@@ -3325,6 +3325,8 @@ struct BuildingConfig {
     /// Track runs into it at ground level: one hall over the tracks, with no storeys
     /// and no passage walls inside.
     rail_hall: bool,
+    /// Simplified red structural frame of the two mapped Parc.1 office towers.
+    seoul_parc1: bool,
 }
 
 /// Base, shaft and capital of a masonry tower: a stone base of one to four
@@ -6156,6 +6158,37 @@ fn compute_detail_tier(
     } else {
         DetailTier::Landmark
     }
+}
+
+/// Only the two high-rise office towers, never the department store or hotel.
+fn seoul_parc1_tower(
+    anchor: (f64, f64),
+    id: u64,
+    tags: &HashMap<String, String>,
+    height_m: f64,
+) -> bool {
+    let (lat, lon) = anchor;
+    if !(37.40..=37.72).contains(&lat)
+        || !(126.75..=127.20).contains(&lon)
+        || height_m < 150.0
+        || is_sloped_glass_facade(tags)
+    {
+        return false;
+    }
+    if matches!(id, 874639189 | 874639190) {
+        return true;
+    }
+    ["name", "name:ko", "name:en"].iter().any(|key| {
+        tags.get(*key).is_some_and(|name| {
+            let name = name.to_lowercase().replace([' ', '.', '-'], "");
+            matches!(
+                name.as_str(),
+                "파크원타워1" | "파크원타워2" | "파크원a동" | "파크원b동"
+                    | "parc1tower1" | "parc1tower2" | "parc1towera" | "parc1towerb"
+                    | "nh금융타워(타워2)" | "nhfinancialtower(parc1tower2)"
+            )
+        })
+    })
 }
 
 /// Seoul's ordinary urban fabric uses a smaller decorative budget. The
@@ -11001,6 +11034,18 @@ fn determine_wall_block_at_position_pristine(
     config: &BuildingConfig,
     col: ColumnFacade,
 ) -> Block {
+    if config.seoul_parc1 && !col.party {
+        // Stylized, floor-aligned red crossbars; not a survey of the real
+        // structural member positions. Red corner posts run the full height.
+        let row = h - config.start_y_offset - config.grammar_anchor();
+        let cycle = config.floor_cycle.max(1);
+        let band = row >= cycle * 12 && row.rem_euclid(cycle * 12) < 2;
+        return if col.corner || band {
+            RED_CONCRETE
+        } else {
+            config.window_block
+        };
+    }
     let block = unzoned_wall_block(h, config, col);
     if let Some((band, rows)) = config.top_band {
         // Above the ground floor it runs over the top storey's glass, or it breaks at every window.
@@ -15751,6 +15796,7 @@ pub fn generate_buildings(
         // `building_facades::collect` will be given.
         preset_shell: Arc::default(),
         passage_height,
+        seoul_parc1: false,
         rail_hall: min_level_offset == 0
             && rail == RailThrough::Into
             && (rail_hall_type(building_type)
@@ -15773,7 +15819,27 @@ pub fn generate_buildings(
     } else {
         config
     };
-    let compact_facade = !args.interior
+    let parc1 = !args.interior
+        && config.condition == BuildingCondition::Normal
+        && seoul_parc1_tower(
+            editor.geo_anchor(),
+            element.id,
+            &element.tags,
+            f64::from(building_height) / scale_factor,
+        );
+    let config = if parc1 {
+        let mut config = compact_facade_config(config);
+        config.seoul_parc1 = true;
+        config.wall_block = LIGHT_BLUE_STAINED_GLASS;
+        config.window_block = LIGHT_BLUE_STAINED_GLASS;
+        config.floor_block = SMOOTH_STONE;
+        config.accent_block = RED_CONCRETE;
+        config.shell_glass = ShellGlass::Plain;
+        config
+    } else {
+        config
+    };
+    let compact_facade = !parc1 && !args.interior
         && config.condition == BuildingCondition::Normal
         && seoul_compact_facade(
             editor.geo_anchor(),
@@ -16077,7 +16143,7 @@ pub fn generate_buildings(
         facade: outline_facade.as_ref(),
         strip: &eave_strip,
     });
-    if !compact_facade {
+    if !compact_facade && !parc1 {
         generate_window_frames(
             editor,
             element,
@@ -16108,7 +16174,7 @@ pub fn generate_buildings(
             stepped_outline.as_ref(),
         );
     }
-    if !compact_facade {
+    if !compact_facade && !parc1 {
         generate_window_life(
             editor,
             element,
@@ -24216,6 +24282,7 @@ mod style_tests {
             preset_shell: Arc::default(),
             passage_height: BUILDING_PASSAGE_HEIGHT,
             rail_hall: false,
+            seoul_parc1: false,
         }
     }
 
@@ -25616,6 +25683,33 @@ mod style_tests {
             compute_detail_tier(&notable, BuildingCategory::Historic, 600, 20, true),
             DetailTier::Landmark
         );
+    }
+
+    #[test]
+    fn parc1_tower_matching_is_specific_to_the_two_high_rises() {
+        let seoul = (37.525, 126.93);
+        let mut tags = HashMap::new();
+        assert!(seoul_parc1_tower(seoul, 874639189, &tags, 333.0));
+        assert!(seoul_parc1_tower(seoul, 874639190, &tags, 256.0));
+        assert!(!seoul_parc1_tower(seoul, 874639190, &tags, 40.0));
+        assert!(!seoul_parc1_tower((40.7, -74.0), 874639189, &tags, 333.0));
+        tags.insert("name".into(), "Parc.1 Tower1".into());
+        assert!(seoul_parc1_tower(seoul, 1, &tags, 333.0));
+        tags.insert("name".into(), "Parc.1".into());
+        assert!(!seoul_parc1_tower(seoul, 1, &tags, 333.0));
+    }
+
+    #[test]
+    fn parc1_facade_uses_red_frame_and_glass_instead_of_extra_wall_layers() {
+        let mut config = test_config(256, false, false);
+        config.seoul_parc1 = true;
+        config.window_block = LIGHT_BLUE_STAINED_GLASS;
+        let plain = ColumnFacade::default();
+        let corner = ColumnFacade { corner: true, ..Default::default() };
+        let h = config.start_y_offset + config.grammar_anchor() + 12 * config.floor_cycle;
+        assert_eq!(determine_wall_block_at_position_pristine(h, &config, plain), RED_CONCRETE);
+        assert_eq!(determine_wall_block_at_position_pristine(h + 2, &config, plain), LIGHT_BLUE_STAINED_GLASS);
+        assert_eq!(determine_wall_block_at_position_pristine(h + 2, &config, corner), RED_CONCRETE);
     }
 
     #[test]
