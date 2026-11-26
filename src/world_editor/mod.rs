@@ -30,7 +30,7 @@ pub use common::{
     DEFAULT_MAX_Y, DEFAULT_MIN_Y,
 };
 pub(crate) use common::{
-    reset_section_counters, section_counters, BlockStorage, CoordMap, RegionToModify,
+    palette_counters, reset_section_counters, section_counters, BlockStorage, CoordMap, RegionToModify,
     SectionToModify,
 };
 

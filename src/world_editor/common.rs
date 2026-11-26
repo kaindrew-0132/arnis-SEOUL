@@ -203,6 +203,42 @@ pub(crate) struct PaletteItem {
 /// of times across every save thread and an unconditional `fetch_add` would contend.
 static BUILT_SECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 static SLOW_PATH_SECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static PALETTE_BUCKETS: [std::sync::atomic::AtomicU64; 5] =
+    [const { std::sync::atomic::AtomicU64::new(0) }; 5];
+static PALETTE_INDEX_BYTES: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+#[cfg(test)]
+#[test]
+fn palette_benchmark_bucket_boundaries() {
+    for (len, expected) in [
+        (1, 0), (2, 1), (16, 1), (17, 2), (32, 2),
+        (33, 3), (64, 3), (65, 4), (4096, 4),
+    ] {
+        assert_eq!(palette_bucket(len), expected);
+    }
+}
+
+fn palette_bucket(len: usize) -> usize {
+    match len {
+        0..=1 => 0,
+        2..=16 => 1,
+        17..=32 => 2,
+        33..=64 => 3,
+        _ => 4,
+    }
+}
+
+/// Counts of serialized section builds (not unique world coordinates), and
+/// uncompressed packed block-state index bytes, excluding palette metadata.
+pub(crate) fn palette_counters() -> ([u64; 5], u64) {
+    use std::sync::atomic::Ordering::Relaxed;
+    (
+        std::array::from_fn(|i| PALETTE_BUCKETS[i].load(Relaxed)),
+        PALETTE_INDEX_BYTES.load(Relaxed),
+    )
+}
+
 static SECTION_COUNTERS_ON: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
@@ -211,6 +247,10 @@ pub(crate) fn reset_section_counters(on: bool) {
     use std::sync::atomic::Ordering::Relaxed;
     BUILT_SECTIONS.store(0, Relaxed);
     SLOW_PATH_SECTIONS.store(0, Relaxed);
+    for bucket in &PALETTE_BUCKETS {
+        bucket.store(0, Relaxed);
+    }
+    PALETTE_INDEX_BYTES.store(0, Relaxed);
     SECTION_COUNTERS_ON.store(on, Relaxed);
 }
 
@@ -832,6 +872,15 @@ fn make_palette_item(block: Block, stored_props: Option<&Arc<Value>>) -> Palette
 }
 
 fn make_section(y: i8, palette: Vec<PaletteItem>, data: Option<LongArray>) -> Section {
+    use std::sync::atomic::Ordering::Relaxed;
+    if SECTION_COUNTERS_ON.load(Relaxed) {
+        PALETTE_BUCKETS[palette_bucket(palette.len())].fetch_add(1, Relaxed);
+        let bytes = data.as_ref().map_or(0, |packed| {
+            let longs: &[i64] = packed;
+            (longs.len() as u64) * 8
+        });
+        PALETTE_INDEX_BYTES.fetch_add(bytes, Relaxed);
+    }
     Section {
         block_states: Blockstates {
             palette,

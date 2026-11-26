@@ -3120,6 +3120,11 @@ pub fn generate_world_with_options(
     if args.benchmark {
         let (built, slow) = crate::world_editor::section_counters();
         eprintln!("[BENCHMARK] sections_built={built} sections_slow_path={slow}");
+        let ([uniform, small, medium, large, extra], bytes) =
+            crate::world_editor::palette_counters();
+        eprintln!(
+            "[BENCHMARK] palette_1={uniform} palette_2_16={small} palette_17_32={medium} palette_33_64={large} palette_65_plus={extra} palette_index_bytes={bytes}"
+        );
     }
 
     // Map item, signage tiles and world settings are often longer than the region
