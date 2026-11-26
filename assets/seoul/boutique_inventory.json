@@ -252,7 +252,15 @@
         "GLASS",
         "LIGHT"
       ],
-      "osm_identity": null
+      "osm_identity": null,
+      "osm_candidates": [
+        {
+          "type": "way",
+          "id": 357063919,
+          "source": "https://mapcarta.com/W357063919",
+          "status": "third_party_candidate_only"
+        }
+      ]
     },
     {
       "id": "chanel-431",
@@ -319,7 +327,15 @@
         "light_gray_stained_glass"
       ],
       "osm_identity": null,
-      "occupancy": "maison"
+      "occupancy": "maison",
+      "osm_candidates": [
+        {
+          "type": "way",
+          "id": 357024178,
+          "source": "https://mapcarta.com/W357024178",
+          "status": "third_party_candidate_only"
+        }
+      ]
     },
     {
       "id": "hermes-dosan-7",
@@ -411,7 +427,15 @@
       ],
       "status": "address_verified",
       "osm_identity": null,
-      "occupancy": "review_required"
+      "occupancy": "review_required",
+      "osm_candidates": [
+        {
+          "type": "way",
+          "id": 357063922,
+          "source": "https://mapcarta.com/W357063922",
+          "status": "third_party_candidate_only"
+        }
+      ]
     },
     {
       "id": "celine-466",

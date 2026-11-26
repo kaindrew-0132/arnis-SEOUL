@@ -1,0 +1,32 @@
+name: Seoul boutique map review
+on:
+  push:
+    branches: ['feature/boutique-facades']
+    paths:
+      - 'scripts/plan_seoul_boutique_placement.cjs'
+      - 'assets/seoul/cheongdam-review.overpassql'
+      - '.github/workflows/seoul-boutique-map-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v7
+      - run: node scripts/plan_seoul_boutique_placement.cjs --self-test
+      - name: Fetch one bounded public OSM extract
+        run: |
+          mkdir -p map-review
+          printf '%s\n' '© OpenStreetMap contributors, ODbL 1.0; https://www.openstreetmap.org/copyright' > map-review/ATTRIBUTION.txt
+          curl --fail --show-error --silent --connect-timeout 20 --max-time 85 --user-agent 'arnis-SEOUL boutique research (github.com/kaindrew-0132/arnis-SEOUL)' --data-urlencode 'data@assets/seoul/cheongdam-review.overpassql' https://overpass.private.coffee/api/interpreter -o map-review/cheongdam.json
+          node scripts/plan_seoul_boutique_placement.cjs map-review/cheongdam.json > map-review/placement-review.json
+          node scripts/associate_seoul_boutiques.cjs map-review/cheongdam.json > map-review/poi-review.json
+          node scripts/review_seoul_boutiques.cjs map-review/cheongdam.json > map-review/identity-review.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: seoul-boutique-map-review
+          path: map-review/
+          if-no-files-found: warn
