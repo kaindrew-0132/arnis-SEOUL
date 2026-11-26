@@ -3336,7 +3336,7 @@ enum SeoulLandmark {
     LotteWorldTower,
     Building63,
     OneBailey,
-    Ifc,
+    Ifc(u8),
     AcroSeoulForest,
     GalleriaForet,
     Warner,
@@ -3360,7 +3360,7 @@ impl SeoulLandmark {
             Self::LotteWorldTower => (LIGHT_GRAY_STAINED_GLASS, WHITE_CONCRETE),
             Self::Building63 => (YELLOW_STAINED_GLASS, BROWN_CONCRETE),
             Self::OneBailey => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
-            Self::Ifc => (LIGHT_GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Ifc(_) => (LIGHT_GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
             Self::AcroSeoulForest => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
             Self::GalleriaForet => (LIGHT_BLUE_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
             Self::Warner => (GRAY_STAINED_GLASS, GRAY_CONCRETE),
@@ -6224,11 +6224,13 @@ fn additional_seoul_landmark(name: &str, height_m: f64) -> Option<SeoulLandmark>
     let residential = (50.0..=280.0).contains(&height_m);
     let boutique_residential = (25.0..=110.0).contains(&height_m);
     if high {
-        if matches!(name, "oneifc" | "twoifc" | "threeifc" | "ifc1" | "ifc2" | "ifc3"
-            | "oneinternationalfinancecenter" | "twointernationalfinancecenter"
-            | "threeinternationalfinancecenter" | "ifc서울1타워" | "ifc서울2타워" | "ifc서울3타워") {
-            return Some(Ifc);
-        }
+        let ifc = match name {
+            "oneifc" | "ifc1" | "oneinternationalfinancecenter" | "ifc서울1타워" => Some(1),
+            "twoifc" | "ifc2" | "twointernationalfinancecenter" | "ifc서울2타워" => Some(2),
+            "threeifc" | "ifc3" | "threeinternationalfinancecenter" | "ifc서울3타워" => Some(3),
+            _ => None,
+        };
+        if let Some(tower) = ifc { return Some(Ifc(tower)); }
         if matches!(name, "센터필드east" | "센터필드west" | "centerfieldeast" | "centerfieldwest"
             | "센터필드이스트" | "센터필드웨스트") { return Some(Centerfield); }
         if matches!(name, "파르나스타워" | "parnastower") { return Some(Parnas); }
@@ -11222,9 +11224,15 @@ fn determine_wall_block_at_position_pristine(
             SeoulLandmark::OneBailey => if col.corner { frame } else if band { GRAY_CONCRETE } else { glass },
             SeoulLandmark::LotteWorldTower => if col.corner { frame } else { glass },
             SeoulLandmark::Building63 => glass,
-            SeoulLandmark::Ifc | SeoulLandmark::Parnas | SeoulLandmark::GangnamFinance
+            SeoulLandmark::Ifc(_) | SeoulLandmark::Parnas | SeoulLandmark::GangnamFinance
                 | SeoulLandmark::TradeTower => if col.corner { frame } else { glass },
-            SeoulLandmark::AcroSeoulForest | SeoulLandmark::GalleriaForet
+            SeoulLandmark::AcroSeoulForest => {
+                let band = seoul_storey_schedule(config).map_or(band, |(height, count)| {
+                    seoul_slab_row(h - config.start_y_offset, height, count)
+                });
+                if band || col.corner { frame } else { glass }
+            },
+            SeoulLandmark::GalleriaForet
                 | SeoulLandmark::TowerPalace | SeoulLandmark::AcroRiverPark
                 | SeoulLandmark::OnePentas | SeoulLandmark::Caelitus =>
                     if band || col.corner { frame } else { glass },
@@ -14611,7 +14619,7 @@ fn generate_floors_and_ceilings(
             let uniform = (config.start_y_offset + config.grammar_anchor() + config.floor_cycle..top)
                 .step_by(config.floor_cycle as usize);
             // Both slab placement and facade bands use the same schedule.
-            // Non-Trimage buildings retain exactly the previous iterator.
+            // Buildings without a custom schedule retain the previous iterator.
             let custom = seoul_levels.as_deref().unwrap_or(&[]);
             let regular = if seoul_levels.is_none() { uniform } else { (0..0).step_by(1) };
             for h in custom.iter().copied().skip(1).chain(regular) {
@@ -14712,6 +14720,10 @@ fn seoul_storey_schedule(config: &BuildingConfig) -> Option<(i32, i32)> {
     let count = match config.seoul_landmark? {
         SeoulLandmark::Trimage(tower) => trimage_storeys(tower)?,
         SeoulLandmark::Warner => 20,
+        SeoulLandmark::Ifc(1) => 32,
+        SeoulLandmark::Ifc(2) => 29,
+        SeoulLandmark::Ifc(3) => 56,
+        SeoulLandmark::AcroSeoulForest => 49,
         _ => return None,
     };
     (config.is_ground_level && config.building_height >= 3 * count)
@@ -14740,6 +14752,41 @@ fn seoul_floor_levels(config: &BuildingConfig) -> Option<Vec<i32>> {
 
 #[path = "seoul_amore_geometry.rs"]
 mod seoul_amore_geometry;
+#[path = "seoul_tower_geometry.rs"]
+mod seoul_tower_geometry;
+
+fn try_seoul_tower_geometry(editor: &mut WorldEditor, cells: &[(i32,i32)], config: &BuildingConfig, tags: &HashMap<String,String>) -> bool {
+    use seoul_tower_geometry::{Cell, Plan};
+    let ground = config.start_y_offset + config.abs_terrain_offset;
+    if ground.saturating_add(config.building_height) > crate::world_editor::world_max_y() { return false; }
+    let plan = match config.seoul_landmark {
+        Some(SeoulLandmark::LotteWorldTower) => Plan::lotte(cells, config.building_height),
+        Some(SeoulLandmark::Ifc(tower)) => {
+            if !tags.get("roof:shape").is_some_and(|s| matches!(s.as_str(), "skillion" | "shed" | "lean_to" | "mono-pitch")) { return false; }
+            let Some(direction) = tags.get("roof:direction").and_then(|s| parse_roof_direction_degrees(s)) else { return false; };
+            let parse_m = |key: &str| tags.get(key).and_then(|s| s.trim().trim_end_matches('m').trim().parse::<f64>().ok()).filter(|v| v.is_finite());
+            let (Some(rise), Some(total)) = (parse_m("roof:height"), parse_m("height")) else { return false; };
+            if (total - f64::from(config.building_height)).abs() > 2.0 || !(3.0..=45.0).contains(&rise) { return false; }
+            Plan::ifc(cells, config.building_height, tower, rise.round() as i32, direction)
+        }
+        _ => None,
+    };
+    let Some(plan) = plan else { return false; };
+    for &(x,z) in cells {
+        let Some(top) = plan.top(x,z) else { continue; };
+        for y in 0..=top {
+            let block = match plan.cell(x,y,z) {
+                Cell::Air => continue,
+                Cell::Floor => SMOOTH_STONE,
+                Cell::Frame => LIGHT_GRAY_CONCRETE,
+                Cell::Glass => LIGHT_GRAY_STAINED_GLASS,
+                Cell::Lamp => LIGHT,
+            };
+            editor.set_block_absolute(block,x,ground+y,z,None,None);
+        }
+    }
+    true
+}
 
 /// A guarded special renderer. The ordinary building pipeline remains the
 /// fallback for clipped, part-only, irregular, or incompatible footprints.
@@ -16170,6 +16217,15 @@ pub fn generate_buildings(
     };
     // Only complete, near-square 1:1 Java envelopes can use the custom
     // courtyard renderer. No clearing of other features or off-footprint writes.
+    if matches!(landmark, Some(SeoulLandmark::LotteWorldTower | SeoulLandmark::Ifc(_)))
+        && config.is_ground_level
+        && (scale_factor - 1.0).abs() < 1e-6
+        && editor.format() == crate::world_editor::WorldFormat::JavaAnvil
+        && hole_polygons.is_none_or(|holes| holes.is_empty())
+        && rail == RailThrough::None
+        && cached_floor_area.iter().all(|&(x,z)| !building_passages.contains(x,z) && !editor.is_mapped_water(x,z))
+        && try_seoul_tower_geometry(editor, &cached_floor_area, &config, &element.tags)
+    { return None; }
     if landmark == Some(SeoulLandmark::Amorepacific)
         && config.is_ground_level
         && (scale_factor - 1.0).abs() < 1e-6
@@ -26087,7 +26143,7 @@ mod style_tests {
         let mut tags = HashMap::new();
         for tower in 101..=104 {
             tags.insert("name".into(), format!("서울숲 트리마제 {tower}동"));
-            assert_eq!(seoul_landmark(seoul, &tags, 160.0), Some(SeoulLandmark::Trimage(tower));
+            assert_eq!(seoul_landmark(seoul, &tags, 160.0), Some(SeoulLandmark::Trimage(tower)));
         }
         assert_eq!(seoul_landmark(seoul, &tags, 30.0), None);
         assert_eq!(seoul_landmark((40.7, -74.0), &tags, 160.0), None);
@@ -26107,7 +26163,7 @@ mod style_tests {
     fn additional_seoul_landmark_aliases_are_exact_and_height_guarded() {
         use SeoulLandmark::*;
         let cases = [
-            ("oneifc", 170.0, Ifc), ("아크로서울포레스트101동", 180.0, AcroSeoulForest),
+            ("oneifc", 170.0, Ifc(1)), ("twoifc", 175.5, Ifc(2)), ("threeifc", 284.0, Ifc(3)), ("아크로서울포레스트101동", 180.0, AcroSeoulForest),
             ("갤러리아포레101동", 200.0, GalleriaForet), ("워너청담", 75.0, Warner),
             ("에테르노청담", 70.0, Eterno), ("ph129", 60.0, Ph129),
             ("타워팰리스g동", 260.0, TowerPalace), ("centerfieldeast", 150.0, Centerfield),
@@ -26134,12 +26190,13 @@ mod style_tests {
         let plain = ColumnFacade::default();
         let party = ColumnFacade { party: true, ..Default::default() };
         let h = config.start_y_offset + config.grammar_anchor() + 3 * config.floor_cycle + 1;
-        for profile in [SeoulLandmark::Ifc, SeoulLandmark::AcroSeoulForest,
+        for profile in [SeoulLandmark::Ifc(1), SeoulLandmark::AcroSeoulForest,
                         SeoulLandmark::Warner, SeoulLandmark::Amorepacific,
                         SeoulLandmark::TowerPalace, SeoulLandmark::Centerfield] {
             config.seoul_landmark = Some(profile);
-            assert!(is_glass_wall(determine_wall_block_at_position_pristine(h, &config, plain)));
-            assert!(!is_glass_wall(determine_wall_block_at_position_pristine(h, &config, party)));
+            let vision_y = seoul_floor_levels(&config).map_or(h, |levels| levels[3] + 1);
+            assert!(is_glass_wall(determine_wall_block_at_position_pristine(vision_y, &config, plain)));
+            assert!(!is_glass_wall(determine_wall_block_at_position_pristine(vision_y, &config, party)));
         }
     }
 
@@ -26177,6 +26234,24 @@ mod style_tests {
             assert!(seoul_floor_levels(&config).is_none());
         }
         assert_eq!(trimage_storeys(105), None);
+    }
+
+    #[test]
+    fn ifc_and_acro_storey_counts_are_distinct() {
+        for (profile, height, count) in [
+            (SeoulLandmark::Ifc(1), 185, 32),
+            (SeoulLandmark::Ifc(2), 176, 29),
+            (SeoulLandmark::Ifc(3), 284, 56),
+            (SeoulLandmark::AcroSeoulForest, 200, 49),
+        ] {
+            let mut config = test_config(height, false, false);
+            config.is_ground_level = true;
+            config.seoul_landmark = Some(profile);
+            let levels = seoul_floor_levels(&config).unwrap();
+            assert_eq!(levels.len(), count);
+            assert!(levels.windows(2).all(|w| w[1] - w[0] >= 3));
+        }
+        assert_eq!(additional_seoul_landmark("dtower", 145.0), None);
     }
 
     #[test]
