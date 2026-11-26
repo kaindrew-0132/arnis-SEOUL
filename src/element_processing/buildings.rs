@@ -3332,7 +3332,7 @@ struct BuildingConfig {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SeoulLandmark {
-    Trimage,
+    Trimage(u16),
     LotteWorldTower,
     Building63,
     OneBailey,
@@ -3356,7 +3356,7 @@ enum SeoulLandmark {
 impl SeoulLandmark {
     fn materials(self) -> (Block, Block) {
         match self {
-            Self::Trimage => (LIGHT_BLUE_STAINED_GLASS, WHITE_CONCRETE),
+            Self::Trimage(_) => (LIGHT_BLUE_STAINED_GLASS, WHITE_CONCRETE),
             Self::LotteWorldTower => (LIGHT_GRAY_STAINED_GLASS, WHITE_CONCRETE),
             Self::Building63 => (YELLOW_STAINED_GLASS, BROWN_CONCRETE),
             Self::OneBailey => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
@@ -6286,7 +6286,7 @@ fn seoul_landmark(
                     .iter()
                     .any(|prefix| name == format!("{prefix}{tower}") || name == format!("{prefix}{tower}동"))
                 {
-                    return Some(SeoulLandmark::Trimage);
+                    return Some(SeoulLandmark::Trimage(tower));
                 }
             }
         }
@@ -11213,7 +11213,12 @@ fn determine_wall_block_at_position_pristine(
         }
         let band = config.floor_row(h) == 0 && h > config.ground_floor_top();
         return match landmark {
-            SeoulLandmark::Trimage => if band || col.corner { frame } else { glass },
+            SeoulLandmark::Trimage(_) => {
+                let band = trimage_schedule(config).map_or(band, |(height, count)| {
+                    trimage_slab_row(h - config.start_y_offset, height, count)
+                });
+                if band || col.corner { frame } else { glass }
+            },
             SeoulLandmark::OneBailey => if col.corner { frame } else if band { GRAY_CONCRETE } else { glass },
             SeoulLandmark::LotteWorldTower => if col.corner { frame } else { glass },
             SeoulLandmark::Building63 => glass,
@@ -14571,6 +14576,7 @@ fn generate_floors_and_ceilings(
         cells.iter().any(|&(x, z)| night_lamp_cell(cells, x, z))
     });
     let passage_height = config.passage_height.min(config.building_height);
+    let trimage_levels = trimage_floor_levels(config);
 
     for &(x, z) in cached_floor_area {
         let lamp = night_cells.as_ref().map_or_else(
@@ -14596,9 +14602,13 @@ fn generate_floors_and_ceilings(
         let top = config.start_y_offset + config.building_height;
         let mut top_floor = config.start_y_offset;
         if config.building_height > config.floor_cycle && !open_hall {
-            for h in (config.start_y_offset + config.grammar_anchor() + config.floor_cycle..top)
-                .step_by(config.floor_cycle as usize)
-            {
+            let uniform = (config.start_y_offset + config.grammar_anchor() + config.floor_cycle..top)
+                .step_by(config.floor_cycle as usize);
+            // Both slab placement and facade bands use the same schedule.
+            // Non-Trimage buildings retain exactly the previous iterator.
+            let custom = trimage_levels.as_deref().unwrap_or(&[]);
+            let regular = if trimage_levels.is_none() { uniform } else { (0..0).step_by(1) };
+            for h in custom.iter().copied().skip(1).chain(regular) {
                 top_floor = h;
                 // Skip intermediate ceilings below passage opening
                 if is_passage && h <= config.start_y_offset + passage_height {
@@ -14677,6 +14687,48 @@ fn generate_floors_and_ceilings(
             );
         }
     }
+}
+
+/// Trimage's above-ground storey counts from published building-register summaries.
+/// Exact floor elevations and individual roof structures are not surveyed.
+fn trimage_storeys(tower: u16) -> Option<i32> {
+    match tower {
+        101 | 104 => Some(47),
+        102 => Some(46),
+        103 => Some(45),
+        _ => None,
+    }
+}
+
+/// Only use the count when the mapped envelope can accommodate at least two
+/// clear rows above every slab. A bad/underscaled height keeps the old grammar.
+fn trimage_schedule(config: &BuildingConfig) -> Option<(i32, i32)> {
+    let Some(SeoulLandmark::Trimage(tower)) = config.seoul_landmark else {
+        return None;
+    };
+    let count = trimage_storeys(tower)?;
+    (config.is_ground_level && config.building_height >= 3 * count)
+        .then_some((config.building_height, count))
+}
+
+fn trimage_slab_offset(index: i32, height: i32, count: i32) -> i32 {
+    (i64::from(index) * i64::from(height) / i64::from(count)) as i32
+}
+
+/// Same integer division as the slab generator, without allocating/searching
+/// a vector for every wall block.
+fn trimage_slab_row(row: i32, height: i32, count: i32) -> bool {
+    if row <= 0 || row >= height {
+        return false;
+    }
+    let index = ((i64::from(row) * i64::from(count) + i64::from(height) - 1)
+        / i64::from(height)) as i32;
+    index < count && trimage_slab_offset(index, height, count) == row
+}
+
+fn trimage_floor_levels(config: &BuildingConfig) -> Option<Vec<i32>> {
+    let (height, count) = trimage_schedule(config)?;
+    Some((0..count).map(|i| config.start_y_offset + trimage_slab_offset(i, height, count)).collect())
 }
 
 /// Calculates floor levels for multi-story buildings
@@ -16212,12 +16264,12 @@ pub fn generate_buildings(
 
     // Interior uses per storey, planned before doors and floors: shared shop floors
     // get a door per shop, open halls lose their storey ceilings.
-    let storey_levels = calculate_floor_levels(
+    let storey_levels = trimage_floor_levels(&config).unwrap_or_else(|| calculate_floor_levels(
         start_y_offset,
         effective_building_height,
         config.floor_cycle,
         config.grammar_anchor(),
-    );
+    ));
     let interior_plan = (args.interior
         && cached_floor_area.len() >= MIN_INTERIOR_CELLS
         && !matches!(
@@ -25986,7 +26038,7 @@ mod style_tests {
         let mut tags = HashMap::new();
         for tower in 101..=104 {
             tags.insert("name".into(), format!("서울숲 트리마제 {tower}동"));
-            assert_eq!(seoul_landmark(seoul, &tags, 160.0), Some(SeoulLandmark::Trimage));
+            assert_eq!(seoul_landmark(seoul, &tags, 160.0), Some(SeoulLandmark::Trimage(tower));
         }
         assert_eq!(seoul_landmark(seoul, &tags, 30.0), None);
         assert_eq!(seoul_landmark((40.7, -74.0), &tags, 160.0), None);
@@ -26045,12 +26097,37 @@ mod style_tests {
     #[test]
     fn trimage_shell_retains_vision_glass_between_white_floor_bands() {
         let mut config = test_config(160, false, false);
-        config.seoul_landmark = Some(SeoulLandmark::Trimage);
+        config.is_ground_level = true;
+        config.seoul_landmark = Some(SeoulLandmark::Trimage(101));
         let plain = ColumnFacade::default();
-        let h = config.start_y_offset + config.grammar_anchor() + 3 * config.floor_cycle;
+        let h = trimage_floor_levels(&config).expect("160 blocks fits 47 floors")[3];
         assert_eq!(determine_wall_block_at_position_pristine(h, &config, plain), WHITE_CONCRETE);
         assert_eq!(determine_wall_block_at_position_pristine(h+1, &config, plain), LIGHT_BLUE_STAINED_GLASS);
         assert!(is_glass_wall(YELLOW_STAINED_GLASS));
+    }
+
+    #[test]
+    fn trimage_four_towers_share_slab_and_facade_schedule() {
+        for (tower, count) in [(101, 47), (102, 46), (103, 45), (104, 47)] {
+            let mut config = test_config(160, false, false);
+            config.is_ground_level = true;
+            config.seoul_landmark = Some(SeoulLandmark::Trimage(tower));
+            let plain = ColumnFacade::default();
+            let corner = ColumnFacade { corner: true, ..Default::default() };
+            let levels = trimage_floor_levels(&config).unwrap();
+            assert_eq!(levels.len(), count);
+            assert_eq!(levels[0], config.start_y_offset);
+            assert!(levels.windows(2).all(|w| w[1] - w[0] >= 3));
+            assert!(config.start_y_offset + config.building_height - levels[count - 1] >= 3);
+            for h in config.start_y_offset + 1..config.start_y_offset + config.building_height {
+                let expected = if levels.contains(&h) { WHITE_CONCRETE } else { LIGHT_BLUE_STAINED_GLASS };
+                assert_eq!(determine_wall_block_at_position_pristine(h, &config, plain), expected);
+                assert_eq!(determine_wall_block_at_position_pristine(h, &config, corner), WHITE_CONCRETE);
+            }
+            config.building_height = 80;
+            assert!(trimage_floor_levels(&config).is_none());
+        }
+        assert_eq!(trimage_storeys(105), None);
     }
 
     #[test]
