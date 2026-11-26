@@ -66,6 +66,24 @@ struct Landmark {
 /// Anchors are measured by matching each model against its real OSM footprint.
 const LANDMARKS: &[Landmark] = &[
     Landmark {
+        name: "N Seoul Tower",
+        qid: "Q69134",
+        osm_ids: &[],
+        model: Source::Built(crate::structures::namsan_tower::build),
+        lat: 37.551216,
+        lon: 126.988276,
+        anchor_x: 15.5,
+        anchor_z: 15.5,
+        ground_y: 0,
+        ground_offset: 0,
+        interior_marker: &[LIGHT_GRAY_CONCRETE],
+        ground_overlap: 0,
+        suppress_half_x: 5.0,
+        suppress_half_z: 5.0,
+        reach_m: 22,
+        height: 237,
+    },
+    Landmark {
         name: "Olympiastadion München",
         qid: "Q131610",
         osm_ids: &[("way", 419_656_920)],
@@ -480,7 +498,8 @@ fn suppressed_by(
             out.insert(key);
             continue;
         }
-        if !is_replaceable(element) {
+        // Do not suppress the independently mapped Namsan plaza or buildings.
+        if landmark.qid == "Q69134" || !is_replaceable(element) {
             continue;
         }
         let Some((x, z)) = centroid_xz(element) else {

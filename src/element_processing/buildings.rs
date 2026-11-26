@@ -3328,6 +3328,7 @@ struct BuildingConfig {
     /// Simplified red structural frame of the two mapped Parc.1 office towers.
     seoul_parc1: bool,
     seoul_landmark: Option<SeoulLandmark>,
+    seoul_mapped_storeys: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3343,7 +3344,11 @@ enum SeoulLandmark {
     Eterno,
     Ph129,
     TowerPalace,
-    Centerfield,
+    Centerfield(u8),
+    Fki,
+    LgTwin,
+    Asem,
+    DForest,
     Parnas,
     GangnamFinance,
     TradeTower,
@@ -3366,7 +3371,9 @@ impl SeoulLandmark {
             Self::Warner => (GRAY_STAINED_GLASS, GRAY_CONCRETE),
             Self::Eterno | Self::Ph129 => (GRAY_STAINED_GLASS, WHITE_CONCRETE),
             Self::TowerPalace => (GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
-            Self::Centerfield => (GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Centerfield(_) => (GRAY_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
+            Self::Fki => (GRAY_STAINED_GLASS, GRAY_CONCRETE),
+            Self::LgTwin | Self::Asem | Self::DForest => (LIGHT_BLUE_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
             Self::Parnas | Self::GangnamFinance | Self::TradeTower =>
                 (LIGHT_BLUE_STAINED_GLASS, LIGHT_GRAY_CONCRETE),
             Self::Amorepacific => (LIGHT_GRAY_STAINED_GLASS, WHITE_CONCRETE),
@@ -6231,15 +6238,19 @@ fn additional_seoul_landmark(name: &str, height_m: f64) -> Option<SeoulLandmark>
             _ => None,
         };
         if let Some(tower) = ifc { return Some(Ifc(tower)); }
-        if matches!(name, "센터필드east" | "센터필드west" | "centerfieldeast" | "centerfieldwest"
-            | "센터필드이스트" | "센터필드웨스트") { return Some(Centerfield); }
+        if matches!(name, "센터필드east" | "centerfieldeast" | "센터필드이스트") { return Some(Centerfield(1)); }
+        if matches!(name, "센터필드west" | "centerfieldwest" | "센터필드웨스트") { return Some(Centerfield(2)); }
+        if (200.0..=270.0).contains(&height_m) && matches!(name, "fkitower" | "전경련회관" | "전경련타워" | "fkiheadquarters") { return Some(Fki); }
+        if (120.0..=200.0).contains(&height_m) && matches!(name, "lgtwintowereast" | "lgtwintowerwest" | "lg트윈타워동관" | "lg트윈타워서관" | "lg트윈타워east" | "lg트윈타워west") { return Some(LgTwin); }
+        if (150.0..=220.0).contains(&height_m) && matches!(name, "asemtower" | "아셈타워") { return Some(Asem); }
+        if (100.0..=190.0).contains(&height_m) && matches!(name, "dtowerseoulforest" | "디타워서울포레스트" | "서울포레스트디타워" | "아크로서울포레스트디타워") { return Some(DForest); }
         if matches!(name, "파르나스타워" | "parnastower") { return Some(Parnas); }
         if matches!(name, "강남파이낸스센터" | "gangnamfinancecenter") { return Some(GangnamFinance); }
         if matches!(name, "트레이드타워" | "tradetower" | "무역센터트레이드타워") { return Some(TradeTower); }
     }
     if residential {
-        if named_tower(name, &["아크로서울포레스트", "acroseoulforest"]) { return Some(AcroSeoulForest); }
-        if named_tower(name, &["갤러리아포레", "galleriaforet"]) { return Some(GalleriaForet); }
+        if ["아크로서울포레스트101", "아크로서울포레스트101동", "아크로서울포레스트102", "아크로서울포레스트102동", "acroseoulforest101", "acroseoulforest101동", "acroseoulforest102", "acroseoulforest102동"].contains(&name) { return Some(AcroSeoulForest); }
+        if ["갤러리아포레101", "갤러리아포레101동", "갤러리아포레102", "갤러리아포레102동", "galleriaforet101", "galleriaforet101동", "galleriaforet102", "galleriaforet102동"].contains(&name) { return Some(GalleriaForet); }
         if named_tower(name, &["아크로리버파크", "acroriverpark"]) { return Some(AcroRiverPark); }
         if named_tower(name, &["래미안원펜타스", "원펜타스", "raemianonepentas"]) { return Some(OnePentas); }
         if named_tower(name, &["래미안첼리투스", "raemiancaelitus"]) { return Some(Caelitus); }
@@ -11214,6 +11225,7 @@ fn determine_wall_block_at_position_pristine(
             return frame;
         }
         let band = config.floor_row(h) == 0 && h > config.ground_floor_top();
+        let band = seoul_storey_schedule(config).map_or(band, |(height, count)| seoul_slab_row(h - config.start_y_offset, height, count));
         return match landmark {
             SeoulLandmark::Trimage(_) => {
                 let band = seoul_storey_schedule(config).map_or(band, |(height, count)| {
@@ -11224,8 +11236,10 @@ fn determine_wall_block_at_position_pristine(
             SeoulLandmark::OneBailey => if col.corner { frame } else if band { GRAY_CONCRETE } else { glass },
             SeoulLandmark::LotteWorldTower => if col.corner { frame } else { glass },
             SeoulLandmark::Building63 => glass,
-            SeoulLandmark::Ifc(_) | SeoulLandmark::Parnas | SeoulLandmark::GangnamFinance
-                | SeoulLandmark::TradeTower => if col.corner { frame } else { glass },
+            SeoulLandmark::Ifc(_) => if col.corner { frame } else { glass },
+            SeoulLandmark::Parnas | SeoulLandmark::GangnamFinance | SeoulLandmark::TradeTower
+                | SeoulLandmark::Asem | SeoulLandmark::DForest | SeoulLandmark::LgTwin | SeoulLandmark::Fki =>
+                    if band || col.corner { frame } else { glass },
             SeoulLandmark::AcroSeoulForest => {
                 let band = seoul_storey_schedule(config).map_or(band, |(height, count)| {
                     seoul_slab_row(h - config.start_y_offset, height, count)
@@ -11242,7 +11256,7 @@ fn determine_wall_block_at_position_pristine(
                 });
                 if band || col.corner { frame } else { glass }
             },
-            SeoulLandmark::Centerfield =>
+            SeoulLandmark::Centerfield(_) =>
                     if band { GRAY_CONCRETE } else if col.corner { frame } else { glass },
             SeoulLandmark::Eterno | SeoulLandmark::Ph129 =>
                     if band || col.corner || config.slot_of(col) == BaySlot::Pier { frame } else { glass },
@@ -14724,6 +14738,21 @@ fn seoul_storey_schedule(config: &BuildingConfig) -> Option<(i32, i32)> {
         SeoulLandmark::Ifc(2) => 29,
         SeoulLandmark::Ifc(3) => 56,
         SeoulLandmark::AcroSeoulForest => 49,
+        SeoulLandmark::GalleriaForet => 45,
+        SeoulLandmark::Eterno | SeoulLandmark::Ph129 => 20,
+        SeoulLandmark::Centerfield(1) => 35,
+        SeoulLandmark::Centerfield(2) => 36,
+        SeoulLandmark::Parnas => 38,
+        SeoulLandmark::GangnamFinance => 45,
+        SeoulLandmark::TradeTower => 54,
+        SeoulLandmark::Fki => 50,
+        SeoulLandmark::LgTwin => 34,
+        SeoulLandmark::Asem => 41,
+        SeoulLandmark::DForest => 33,
+        SeoulLandmark::OneBailey | SeoulLandmark::OnePentas => config.seoul_mapped_storeys.filter(|n| (10..=35).contains(n))?,
+        SeoulLandmark::AcroRiverPark => config.seoul_mapped_storeys.filter(|n| (10..=38).contains(n))?,
+        SeoulLandmark::Caelitus => config.seoul_mapped_storeys.filter(|n| (20..=56).contains(n))?,
+        SeoulLandmark::TowerPalace => config.seoul_mapped_storeys.filter(|n| (15..=69).contains(n))?,
         _ => return None,
     };
     (config.is_ground_level && config.building_height >= 3 * count)
@@ -14799,6 +14828,7 @@ fn try_amore_geometry(
         return false;
     };
     let ground = config.start_y_offset + config.abs_terrain_offset;
+    if ground.saturating_add(config.building_height) > crate::world_editor::world_max_y() { return false; }
     for &(x, z) in cells {
         for y in 0..=config.building_height {
             let block = match plan.cell(x, y, z) {
@@ -16155,6 +16185,7 @@ pub fn generate_buildings(
         passage_height,
         seoul_parc1: false,
         seoul_landmark: None,
+        seoul_mapped_storeys: None,
         rail_hall: min_level_offset == 0
             && rail == RailThrough::Into
             && (rail_hall_type(building_type)
@@ -16206,6 +16237,7 @@ pub fn generate_buildings(
         let mut config = compact_facade_config(config);
         let (glass, frame) = profile.materials();
         config.seoul_landmark = Some(profile);
+        config.seoul_mapped_storeys = element.tags.get("building:levels").and_then(|s| s.trim().parse::<i32>().ok());
         config.wall_block = glass;
         config.window_block = glass;
         config.accent_block = frame;
@@ -16220,6 +16252,7 @@ pub fn generate_buildings(
     if matches!(landmark, Some(SeoulLandmark::LotteWorldTower | SeoulLandmark::Ifc(_)))
         && config.is_ground_level
         && (scale_factor - 1.0).abs() < 1e-6
+        && args.rotation.rem_euclid(360.0).abs() < 1e-6
         && editor.format() == crate::world_editor::WorldFormat::JavaAnvil
         && hole_polygons.is_none_or(|holes| holes.is_empty())
         && rail == RailThrough::None
@@ -16229,6 +16262,7 @@ pub fn generate_buildings(
     if landmark == Some(SeoulLandmark::Amorepacific)
         && config.is_ground_level
         && (scale_factor - 1.0).abs() < 1e-6
+        && args.rotation.rem_euclid(360.0).abs() < 1e-6
         && editor.format() == crate::world_editor::WorldFormat::JavaAnvil
         && hole_polygons.is_none_or(|holes| holes.is_empty())
         && rail == RailThrough::None
@@ -24735,6 +24769,7 @@ mod style_tests {
             rail_hall: false,
             seoul_parc1: false,
         seoul_landmark: None,
+        seoul_mapped_storeys: None,
         }
     }
 
@@ -26166,7 +26201,7 @@ mod style_tests {
             ("oneifc", 170.0, Ifc(1)), ("twoifc", 175.5, Ifc(2)), ("threeifc", 284.0, Ifc(3)), ("아크로서울포레스트101동", 180.0, AcroSeoulForest),
             ("갤러리아포레101동", 200.0, GalleriaForet), ("워너청담", 75.0, Warner),
             ("에테르노청담", 70.0, Eterno), ("ph129", 60.0, Ph129),
-            ("타워팰리스g동", 260.0, TowerPalace), ("centerfieldeast", 150.0, Centerfield),
+            ("타워팰리스g동", 260.0, TowerPalace), ("centerfieldeast", 150.0, Centerfield(1)), ("centerfieldwest", 150.0, Centerfield(2)),
             ("파르나스타워", 180.0, Parnas), ("강남파이낸스센터", 200.0, GangnamFinance),
             ("트레이드타워", 200.0, TradeTower), ("아모레퍼시픽본사", 100.0, Amorepacific),
             ("아크로리버파크101동", 110.0, AcroRiverPark),
@@ -26192,7 +26227,7 @@ mod style_tests {
         let h = config.start_y_offset + config.grammar_anchor() + 3 * config.floor_cycle + 1;
         for profile in [SeoulLandmark::Ifc(1), SeoulLandmark::AcroSeoulForest,
                         SeoulLandmark::Warner, SeoulLandmark::Amorepacific,
-                        SeoulLandmark::TowerPalace, SeoulLandmark::Centerfield] {
+                        SeoulLandmark::TowerPalace, SeoulLandmark::Centerfield(1)] {
             config.seoul_landmark = Some(profile);
             let vision_y = seoul_floor_levels(&config).map_or(h, |levels| levels[3] + 1);
             assert!(is_glass_wall(determine_wall_block_at_position_pristine(vision_y, &config, plain)));
@@ -26252,6 +26287,35 @@ mod style_tests {
             assert!(levels.windows(2).all(|w| w[1] - w[0] >= 3));
         }
         assert_eq!(additional_seoul_landmark("dtower", 145.0), None);
+    }
+
+    #[test]
+    fn additional_office_and_residential_profiles_use_supported_counts() {
+        use SeoulLandmark::*;
+        for (name, height, profile, count) in [
+            ("fkitower", 245, Fki, 50), ("lg트윈타워동관", 143, LgTwin, 34),
+            ("asemtower", 176, Asem, 41), ("dtowerseoulforest", 145, DForest, 33),
+            ("centerfieldeast", 159, Centerfield(1), 35), ("centerfieldwest", 159, Centerfield(2), 36),
+            ("parnastower", 183, Parnas, 38), ("gangnamfinancecenter", 204, GangnamFinance, 45),
+            ("tradetower", 228, TradeTower, 54), ("갤러리아포레101동", 170, GalleriaForet, 45),
+            ("eternocheongdam", 94, Eterno, 20), ("ph129", 90, Ph129, 20),
+        ] {
+            assert_eq!(additional_seoul_landmark(name, f64::from(height)), Some(profile));
+            let mut config = test_config(height, false, false);
+            config.is_ground_level = true;
+            config.seoul_landmark = Some(profile);
+            assert_eq!(seoul_floor_levels(&config).unwrap().len(), count);
+        }
+        assert_eq!(additional_seoul_landmark("lg트윈타워", 143.0), None);
+        assert_eq!(additional_seoul_landmark("갤러리아포레103동", 170.0), None);
+        let mut config = test_config(160, false, false);
+        config.is_ground_level = true;
+        config.seoul_landmark = Some(OnePentas);
+        assert!(seoul_floor_levels(&config).is_none());
+        config.seoul_mapped_storeys = Some(29);
+        assert_eq!(seoul_floor_levels(&config).unwrap().len(), 29);
+        config.seoul_mapped_storeys = Some(36);
+        assert!(seoul_floor_levels(&config).is_none());
     }
 
     #[test]

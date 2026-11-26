@@ -13,6 +13,7 @@ pub mod helicopter;
 pub mod hollywood_sign;
 pub mod jetbridge;
 pub mod lighthouse;
+pub mod namsan_tower;
 pub mod plane;
 pub mod playground;
 pub mod reichstag;

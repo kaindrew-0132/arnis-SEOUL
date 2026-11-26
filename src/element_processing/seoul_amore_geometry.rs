@@ -3,7 +3,7 @@
 //! No copied drawings, exact surveyed coordinates, or whole-area suppression.
 //! Fit only a complete near-square rotated footprint at 1 m/block.
 
-use fnv::FnvHashSet;
+use std::collections::HashSet as FnvHashSet;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Cell { Air, Floor, Frame, Glass, Lamp }

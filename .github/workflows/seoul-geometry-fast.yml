@@ -1,0 +1,22 @@
+name: Seoul geometry fast tests
+on:
+  push:
+    branches: ['feature/special-geometry']
+    paths:
+      - 'src/element_processing/**'
+      - 'tests/seoul_geometry_smoke.rs'
+      - '.github/workflows/seoul-geometry-fast.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Parse edited Rust source
+        run: rustfmt --edition 2021 --emit stdout --config skip_children=true src/element_processing/buildings.rs > /dev/null
+      - name: Compile and run geometry fixtures
+        run: |
+          rustc --edition 2021 --test tests/seoul_geometry_smoke.rs -o /tmp/seoul-geometry-tests
+          /tmp/seoul-geometry-tests
