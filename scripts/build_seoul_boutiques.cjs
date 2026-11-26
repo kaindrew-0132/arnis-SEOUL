@@ -71,7 +71,7 @@ function schem(model){
  const tags=[tag(3,"Version",int(2)),tag(3,"DataVersion",int(3955)),
   tag(2,"Width",short(model.width)),tag(2,"Height",short(model.height)),tag(2,"Length",short(model.length)),
   tag(11,"Offset",Buffer.concat([int(3),int(0),int(0),int(0)])),
-  tag(3,"PaletteMax",int(pal.length)),tag(10,"Palette",comp(pal.map((b,i)=>tag(3,b,int(i)))),
+  tag(3,"PaletteMax",int(pal.length)),tag(10,"Palette",comp(pal.map((b,i)=>tag(3,b,int(i))))),
   tag(7,"BlockData",Buffer.concat([int(data.length),data])),
   tag(9,"BlockEntities",Buffer.concat([Buffer.from([10]),int(0)]))];
  const raw=tag(10,"Schematic",comp(tags));return zlib.gzipSync(raw,{level:9});
