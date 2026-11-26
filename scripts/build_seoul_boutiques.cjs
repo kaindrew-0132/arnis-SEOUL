@@ -61,7 +61,10 @@ function test(profiles,inv){
   if(JSON.stringify(a)!==JSON.stringify(b))throw Error("nondeterministic");
   if(!a.cells.some(q=>q.block.includes("glass"))||!a.cells.some(q=>q.block.includes("light[")))throw Error("missing window or light "+p.id);
   if(a.cells.some(q=>q.xyz[0]>=c-1&&q.xyz[0]<=c+1&&q.xyz[1]>=1&&q.xyz[1]<=3))throw Error("entrance obstructed "+p.id);
-  if(p.style==="illuminated_arch"&&!a.cells.some(q=>q.block==="minecraft:sea_lantern"))throw Error("arch is not emissive");
+  if(p.style==="illuminated_arch"){
+   const arches=a.cells.filter(q=>q.block==="minecraft:sea_lantern");
+   if(!arches.length||Math.max(...arches.map(q=>q.xyz[1]))-Math.min(...arches.map(q=>q.xyz[1]))!==16)throw Error("arch must rise 16 blocks");
+  }
   if(p.style==="double_skin"&&!a.cells.some(q=>q.xyz[2]===0&&q.block==="minecraft:gold_block"))throw Error("missing outer skin");
   if(a.cells.length>a.width*a.height*a.length||new Set(a.cells.map(q=>q.xyz.join(","))).size!==a.cells.length)throw Error("duplicates");
   n+=a.cells.length;
