@@ -6330,6 +6330,35 @@ fn seoul_landmark(
     None
 }
 
+/// Raw OSM way records reviewed in workflow 45825983884. A bare Korean
+/// apartment number is not a global alias: require ID, name, type, mapped
+/// levels and compatible height. Never attach this profile to a podium.
+fn seoul_verified_way_landmark(
+    anchor: (f64, f64), id: u64, tags: &HashMap<String,String>, height_m: f64,
+) -> Option<SeoulLandmark> {
+    let (lat,lon)=anchor;
+    if !(37.40..=37.72).contains(&lat) || !(126.75..=127.20).contains(&lon)
+        || !height_m.is_finite() || tags.contains_key("building:part")
+        || is_sloped_glass_facade(tags)
+        || tags.get("building").map(String::as_str)!=Some("apartments") {return None;}
+    let (profile,expected_height,levels,name)=match id {
+        601252644 => (SeoulLandmark::Trimage(101),157.0,"47","101동"),
+        601252645 => (SeoulLandmark::Trimage(102),154.0,"46","102동"),
+        601252642 => (SeoulLandmark::Trimage(103),144.0,"45","103동"),
+        601252643 => (SeoulLandmark::Trimage(104),150.0,"47","104동"),
+        473812530 | 473812532 => (SeoulLandmark::GalleriaForet,171.5,"45","한화 갤러리아 포레스트 타워"),
+        _=>return None,
+    };
+    if (height_m-expected_height).abs()>8.0
+        || tags.get("building:levels").map(|v|v.trim())!=Some(levels)
+        || !["name","name:ko","name:en"].iter().any(|key|
+            tags.get(*key).is_some_and(|v|v.trim()==name
+                || (profile==SeoulLandmark::GalleriaForet && v.trim()=="Hanwha Galleria Foret Tower"))) {
+        return None;
+    }
+    Some(profile)
+}
+
 /// Only the two high-rise office towers, never the department store or hotel.
 fn seoul_parc1_tower(
     anchor: (f64, f64),
@@ -16269,7 +16298,10 @@ pub fn generate_buildings(
         config
     };
     let landmark = if !args.interior && !parc1 && config.condition == BuildingCondition::Normal {
-        seoul_landmark(editor.geo_anchor(), &element.tags, f64::from(building_height) / scale_factor)
+        let anchor = editor.geo_anchor();
+        let height_m = f64::from(building_height) / scale_factor;
+        seoul_verified_way_landmark(anchor, element.id, &element.tags, height_m)
+            .or_else(|| seoul_landmark(anchor, &element.tags, height_m))
     } else {
         None
     };
@@ -26273,6 +26305,27 @@ mod style_tests {
             assert!(is_glass_wall(determine_wall_block_at_position_pristine(vision_y, &config, plain)));
             assert!(!is_glass_wall(determine_wall_block_at_position_pristine(vision_y, &config, party)));
         }
+    }
+
+    #[test]
+    fn verified_apartment_ids_disambiguate_bare_tower_names() {
+        let seoul=(37.54,127.045);
+        for (id,tower,height,levels) in [(601252644,101,157.0,"47"),(601252645,102,154.0,"46"),
+            (601252642,103,144.0,"45"),(601252643,104,150.0,"47")] {
+            let mut tags=tag_map(&[("building","apartments"),("building:levels",levels)]);
+            tags.insert("name".into(),format!("{tower}동"));
+            assert_eq!(seoul_verified_way_landmark(seoul,id,&tags,height),Some(SeoulLandmark::Trimage(tower)));
+            assert_eq!(seoul_verified_way_landmark(seoul,528350704,&tags,height),None);
+            assert_eq!(seoul_verified_way_landmark(seoul,id,&tags,60.0),None);
+            assert_eq!(seoul_verified_way_landmark((48.0,11.0),id,&tags,height),None);
+            tags.insert("building:part".into(),"yes".into());
+            assert_eq!(seoul_verified_way_landmark(seoul,id,&tags,height),None);
+        }
+        let tags=tag_map(&[("building","apartments"),("building:levels","45"),("name","한화 갤러리아 포레스트 타워")]);
+        for id in [473812530,473812532] {
+            assert_eq!(seoul_verified_way_landmark(seoul,id,&tags,171.5),Some(SeoulLandmark::GalleriaForet));
+        }
+        assert_eq!(seoul_verified_way_landmark(seoul,473812531,&tags,171.5),None);
     }
 
     #[test]

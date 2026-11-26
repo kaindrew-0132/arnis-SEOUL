@@ -367,7 +367,15 @@
       "geometry": "Official listing specifies 1F and 2F; do not replace entire building",
       "material_slots": [],
       "osm_identity": null,
-      "occupancy": "floor_limited"
+      "occupancy": "floor_limited",
+      "osm_candidates": [
+        {
+          "type": "way",
+          "id": 357063920,
+          "source": "https://github.com/kaindrew-0132/arnis-SEOUL/actions/runs/45825983884",
+          "status": "raw_brand_and_address_match_unapproved"
+        }
+      ]
     },
     {
       "id": "vca-441",
